@@ -5,14 +5,12 @@ import { query, where, getDocs, collection } from 'firebase/firestore';
 import { db } from './utils/firebase';
 
 // Componentes de autenticación
-
 import RegLogin from './views/vlogin/reg-login';
 
 // Componentes del sistema
 import Dashboard from './components/monitoreos/Dashboard.jsx'
-import ControlLuminarias from './components/Control/ControlLuminarias.jsx'
-import ConfiguracionSensores from './components/Configuracion/ConfiguracionSensores.jsx'
-import GestionDispositivos from './components/Dispositivos/GestionDispositivos.jsx'
+import GestionUnidades from './components/GestionUnidades/GestionUnidades.jsx'
+import MapeoDispositivos from './components/MapeoDispositivos/MapeoDispositivos.jsx'
 import GestionUsuarios from './components/gestion-usuarios/gestion-usuarios.jsx';
 import Reportes from './components/reportes/reportes.jsx';
 
@@ -137,17 +135,17 @@ function App() {
     if (!userRole) return false;
     
     const adminRoutes = [
+      '/gestion-usuarios',
       '/monitoreo', 
-      '/control-luminarias', 
-      '/configuracion-sensores',
-      '/gestion-dispositivos', 
-      '/gestion-usuarios', 
+      '/gestion-unidades',
+      '/mapeo-dispositivos',
       '/reportes'
     ];
     
     const operadorRoutes = [
       '/monitoreo', 
-      '/control-luminarias', 
+      '/gestion-unidades',
+      '/mapeo-dispositivos',
       '/reportes'
     ];
     
@@ -256,7 +254,16 @@ function App() {
           } 
         />
 
-        {/* Rutas protegidas */}
+        {/* Rutas protegidas - En orden del diagrama */}
+        <Route 
+          path="/gestion-usuarios" 
+          element={
+            <ProtectedRoute path="/gestion-usuarios">
+              <GestionUsuarios />
+            </ProtectedRoute>
+          } 
+        />
+
         <Route 
           path="/monitoreo" 
           element={
@@ -267,37 +274,19 @@ function App() {
         />
         
         <Route 
-          path="/control-luminarias" 
+          path="/gestion-unidades" 
           element={
-            <ProtectedRoute path="/control-luminarias">
-              <ControlLuminarias userRole={userRole} />
+            <ProtectedRoute path="/gestion-unidades">
+              <GestionUnidades userRole={userRole} />
             </ProtectedRoute>
           } 
         />
         
         <Route 
-          path="/configuracion-sensores" 
+          path="/mapeo-dispositivos" 
           element={
-            <ProtectedRoute path="/configuracion-sensores">
-              <ConfiguracionSensores userRole={userRole} />
-            </ProtectedRoute>
-          } 
-        />
-        
-        <Route 
-          path="/gestion-dispositivos" 
-          element={
-            <ProtectedRoute path="/gestion-dispositivos">
-              <GestionDispositivos userRole={userRole} />
-            </ProtectedRoute>
-          } 
-        />
-        
-        <Route 
-          path="/gestion-usuarios" 
-          element={
-            <ProtectedRoute path="/gestion-usuarios">
-              <GestionUsuarios />
+            <ProtectedRoute path="/mapeo-dispositivos">
+              <MapeoDispositivos userRole={userRole} />
             </ProtectedRoute>
           } 
         />

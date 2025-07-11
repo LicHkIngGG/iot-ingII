@@ -1,4 +1,4 @@
-/* barra-nav.css - Versión elegante con mejor espaciado */
+/* barra-nav.css - Versión sin espaciado entre nav y contenido */
 
 /* ===================== VARIABLES ===================== */
 :root {
@@ -9,6 +9,14 @@
   --sidebar-width: 280px;
   --sidebar-width-mobile: 260px;
   --transition-ease: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===================== LAYOUT PRINCIPAL ===================== */
+/* ELIMINAMOS EL PADDING-LEFT DEL BODY */
+body.sidebar-visible,
+body.sidebar-hidden {
+  padding-left: 0;
+  transition: var(--transition-ease);
 }
 
 /* ===================== CONTENEDOR ===================== */
@@ -42,7 +50,7 @@
 
 /* ===================== LOGO ===================== */
 .logo {
-  padding: 2rem 1.5rem;
+  padding: 1.5rem 1.25rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(59, 130, 246, 0.05);
   flex-shrink: 0;
@@ -51,14 +59,14 @@
 .logo-container {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.875rem;
 }
 
 .logo-icon {
-  width: 3.5rem;
-  height: 3.5rem;
+  width: 3rem;
+  height: 3rem;
   background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-  border-radius: 1rem;
+  border-radius: 0.75rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -67,8 +75,8 @@
 }
 
 .logo-light {
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
   color: white;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
@@ -80,7 +88,7 @@
 
 .logo-text h2 {
   margin: 0 0 0.25rem 0;
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.025em;
   color: white;
@@ -88,8 +96,8 @@
 }
 
 .logo-text p {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.75rem;
+  margin: 0 0 0.375rem 0;
+  font-size: 0.6875rem;
   color: rgba(255, 255, 255, 0.7);
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -100,22 +108,22 @@
   display: inline-block;
   background: rgba(59, 130, 246, 0.2);
   color: #93c5fd;
-  font-size: 0.6875rem;
+  font-size: 0.625rem;
   font-weight: 600;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.375rem;
+  padding: 0.1875rem 0.375rem;
+  border-radius: 0.25rem;
   text-transform: uppercase;
   letter-spacing: 0.025em;
   border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
-/* ===================== NAVEGACIÓN MEJORADA ===================== */
+/* ===================== NAVEGACIÓN COMPACTA ===================== */
 .nav-links {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 2rem 1.5rem;
+  gap: 0.125rem;
+  padding: 1.25rem 1rem;
   overflow-y: auto;
 }
 
@@ -125,7 +133,7 @@
   background: transparent;
   color: rgba(255, 255, 255, 0.8);
   border: none;
-  border-radius: 1rem;
+  border-radius: 0.625rem;
   cursor: pointer;
   text-decoration: none;
   transition: var(--transition-ease);
@@ -133,7 +141,7 @@
   position: relative;
   width: 100%;
   text-align: left;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.0625rem;
 }
 
 .nav-button::before {
@@ -154,42 +162,43 @@
 
 .nav-button:hover {
   color: white;
-  transform: translateX(6px);
+  transform: translateX(4px);
 }
 
 .nav-button.active {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(245, 158, 11, 0.2));
   color: white;
-  border-left: 4px solid var(--primary-color);
-  transform: translateX(6px);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.25);
+  border-left: 3px solid var(--primary-color);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
 }
 
 .nav-button.active::before {
   opacity: 1;
 }
 
+/* CONTENIDO COMPACTO DE NAVEGACIÓN */
 .nav-button-content {
   position: relative;
   z-index: 1;
-  padding: 1.5rem 1.25rem;
+  padding: 0.875rem 1rem;
 }
 
 .nav-button-main {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
-  margin-bottom: 0.75rem;
+  gap: 0.875rem;
+  margin-bottom: 0.25rem;
 }
 
 .nav-icon {
-  width: 1.375rem;
-  height: 1.375rem;
+  width: 1.125rem;
+  height: 1.125rem;
   flex-shrink: 0;
 }
 
 .nav-label {
-  font-size: 0.95rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   line-height: 1.3;
   flex: 1;
@@ -197,26 +206,26 @@
 }
 
 .nav-description {
-  font-size: 0.8rem;
+  font-size: 0.6875rem;
   color: rgba(255, 255, 255, 0.6);
-  margin-left: 2.625rem;
-  line-height: 1.5;
-  margin-top: 0.25rem;
+  margin-left: 2rem;
+  line-height: 1.3;
+  margin-top: 0;
   font-weight: 400;
   letter-spacing: 0.01em;
 }
 
 .nav-button:hover .nav-description {
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .nav-button.active .nav-description {
-  color: rgba(255, 255, 255, 0.95);
+  color: rgba(255, 255, 255, 0.9);
 }
 
-/* ===================== BOTÓN LOGOUT MEJORADO ===================== */
+/* ===================== BOTÓN LOGOUT COMPACTO ===================== */
 .logout-button {
-  margin-top: auto;
+  margin-top: 0.75rem;
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.2);
   color: #fca5a5;
@@ -232,7 +241,7 @@
   background: rgba(239, 68, 68, 0.2);
   border-color: rgba(239, 68, 68, 0.4);
   color: #fecaca;
-  transform: translateX(6px);
+  transform: translateX(4px);
 }
 
 .logout-button .nav-description {
@@ -245,7 +254,7 @@
 
 /* ===================== FOOTER DEL SIDEBAR ===================== */
 .sidebar-footer {
-  padding: 1.5rem;
+  padding: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
@@ -254,18 +263,18 @@
 .system-status {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .status-indicator {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.625rem;
 }
 
 .status-indicator.online .status-dot {
-  width: 0.625rem;
-  height: 0.625rem;
+  width: 0.5rem;
+  height: 0.5rem;
   background: var(--success-color);
   border-radius: 50%;
   animation: pulse 2s infinite;
@@ -276,7 +285,7 @@
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
   }
   70% {
-    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
   }
   100% {
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
@@ -284,13 +293,13 @@
 }
 
 .status-text {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 500;
   color: var(--success-color);
 }
 
 .last-sync {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.6);
   font-weight: 400;
 }
@@ -298,25 +307,25 @@
 /* ===================== BOTÓN TOGGLE ===================== */
 .toggle-btn {
   position: fixed;
-  top: 1.5rem;
+  top: 1.25rem;
   z-index: 1100;
   background: var(--primary-color);
   color: white;
   border: none;
-  border-radius: 0.875rem;
-  width: 2.75rem;
-  height: 2.75rem;
+  border-radius: 0.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
   transition: var(--transition-ease);
 }
 
 .toggle-btn:hover {
   background: #2563eb;
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
   transform: scale(1.05);
 }
 
@@ -326,22 +335,34 @@
 }
 
 .toggle-icon {
-  width: 1.375rem;
-  height: 1.375rem;
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
-/* Posición del botón toggle según estado del sidebar */
+/* POSICIÓN DEL BOTÓN TOGGLE - FUERA DEL SIDEBAR */
 body.sidebar-visible .toggle-btn {
-  left: calc(var(--sidebar-width) + 1rem);
+  left: calc(var(--sidebar-width) + 0.75rem);
 }
 
 body.sidebar-hidden .toggle-btn {
-  left: 1.5rem;
+  left: 1.25rem;
+}
+
+/* ===================== CONTENIDO PRINCIPAL ===================== */
+/* Agregamos estilos para el contenido principal */
+.main-content {
+  margin-left: 0;
+  transition: var(--transition-ease);
+}
+
+/* Cuando el sidebar está visible, el contenido no se desplaza */
+body.sidebar-visible .main-content {
+  margin-left: 0;
 }
 
 /* ===================== SCROLLBAR PERSONALIZADA ===================== */
 .sidebar::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
 
 .sidebar::-webkit-scrollbar-track {
@@ -350,7 +371,7 @@ body.sidebar-hidden .toggle-btn {
 
 .sidebar::-webkit-scrollbar-thumb {
   background-color: rgba(59, 130, 246, 0.4);
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover {
@@ -364,16 +385,16 @@ body.sidebar-hidden .toggle-btn {
   }
   
   .logo {
-    padding: 1.75rem 1.25rem;
+    padding: 1.375rem 1.125rem;
   }
   
   .nav-links {
-    padding: 1.5rem 1.25rem;
-    gap: 0.625rem;
+    padding: 1.125rem 0.875rem;
+    gap: 0.1875rem;
   }
   
   .nav-button-content {
-    padding: 1.25rem 1rem;
+    padding: 0.8125rem 0.875rem;
   }
 }
 
@@ -394,36 +415,32 @@ body.sidebar-hidden .toggle-btn {
   /* Botón toggle siempre en posición fija en móviles */
   body.sidebar-visible .toggle-btn,
   body.sidebar-hidden .toggle-btn {
-    left: 1.5rem;
-  }
-  
-  /* Overlay para móviles */
-  body.sidebar-visible::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 999;
+    left: 1.25rem;
   }
   
   .logo {
-    padding: 1.5rem 1rem;
+    padding: 1.25rem 1rem;
   }
   
   .nav-links {
-    padding: 1.25rem 1rem;
-    gap: 0.5rem;
+    padding: 1rem 0.875rem;
+    gap: 0.25rem;
   }
   
   .nav-button-content {
-    padding: 1.125rem 0.875rem;
+    padding: 1rem 0.875rem;
+  }
+  
+  .nav-button-main {
+    margin-bottom: 0.375rem;
+  }
+  
+  .nav-description {
+    font-size: 0.75rem;
   }
   
   .sidebar-footer {
-    padding: 1.25rem;
+    padding: 1rem;
   }
 }
 
@@ -442,55 +459,53 @@ body.sidebar-hidden .toggle-btn {
   }
   
   .logo-icon {
-    width: 3rem;
-    height: 3rem;
+    width: 2.75rem;
+    height: 2.75rem;
   }
   
   .logo-light {
-    width: 1.75rem;
-    height: 1.75rem;
+    width: 1.5rem;
+    height: 1.5rem;
   }
   
   .logo-text h2 {
-    font-size: 1rem;
+    font-size: 0.9375rem;
   }
   
   .logo-text p {
-    font-size: 0.6875rem;
+    font-size: 0.625rem;
   }
   
   .nav-button-main {
-    gap: 1rem;
+    gap: 0.75rem;
   }
   
   .nav-label {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
   }
   
   .nav-description {
-    font-size: 0.75rem;
-    margin-left: 2rem;
+    font-size: 0.6875rem;
+    margin-left: 1.875rem;
   }
   
   .toggle-btn {
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 2.25rem;
+    height: 2.25rem;
     top: 1rem;
   }
   
   .toggle-icon {
-    width: 1.25rem;
-    height: 1.25rem;
+    width: 1.125rem;
+    height: 1.125rem;
   }
 }
 
 /* ===================== AJUSTES FINALES ===================== */
-/* Prevenir duplicados */
 #toggle-btn-unique:not(:first-of-type) {
   display: none;
 }
 
-/* Z-index hierarchy */
 .sidebar {
   z-index: 1000;
 }
@@ -499,7 +514,16 @@ body.sidebar-hidden .toggle-btn {
   z-index: 1100;
 }
 
-/* Animaciones mejoradas */
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+}
+
 .nav-button,
 .toggle-btn,
 .status-dot,
@@ -507,18 +531,22 @@ body.sidebar-hidden .toggle-btn {
   transition: var(--transition-ease);
 }
 
-/* Accesibilidad */
 .nav-button:focus,
 .toggle-btn:focus {
   outline: 2px solid rgba(59, 130, 246, 0.5);
   outline-offset: 2px;
 }
 
-/* Performance */
 .sidebar {
   will-change: transform;
 }
 
 .nav-button {
   will-change: transform;
+}
+
+body {
+  transition: var(--transition-ease);
+  margin: 0;
+  padding: 0;
 }

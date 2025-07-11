@@ -12,7 +12,8 @@ import {
   Menu,
   X,
   Zap,
-  Monitor
+  Monitor,
+  MapPin
 } from 'lucide-react';
 import './barra-nav.css';
 
@@ -98,34 +99,28 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
   const navOptions = {
     administrador: [
       { 
+        path: '/gestion-usuarios', 
+        label: 'Gestión de Personal', 
+        icon: Users,
+        description: 'Administradores y operadores'
+      },
+      { 
         path: '/monitoreo', 
-        label: 'Dashboard Principal', 
+        label: 'Monitoreo y Control', 
         icon: Activity,
         description: 'Monitoreo en tiempo real'
       },
       { 
-        path: '/control-luminarias', 
-        label: 'Control de Luminarias', 
-        icon: Lightbulb,
-        description: 'Control manual y automático'
-      },
-      { 
-        path: '/configuracion-sensores', 
-        label: 'Configuración', 
+        path: '/gestion-unidades', 
+        label: 'Gestión de Unidades', 
         icon: Settings,
-        description: 'Sensores y automatización'
+        description: 'Configuración de unidades'
       },
       { 
-        path: '/gestion-dispositivos', 
-        label: 'Gestión Dispositivos', 
-        icon: Monitor,
-        description: 'Administrar postes'
-      },
-      { 
-        path: '/gestion-usuarios', 
-        label: 'Gestión Usuarios', 
-        icon: Users,
-        description: 'Administradores y operadores'
+        path: '/mapeo-dispositivos', 
+        label: 'Mapeo de Dispositivos', 
+        icon: MapPin,
+        description: 'Ubicación y mapeo'
       },
       { 
         path: '/reportes', 
@@ -137,15 +132,21 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
     operador: [
       { 
         path: '/monitoreo', 
-        label: 'Dashboard Principal', 
+        label: 'Monitoreo y Control', 
         icon: Activity,
         description: 'Monitoreo en tiempo real'
       },
       { 
-        path: '/control-luminarias', 
-        label: 'Control de Luminarias', 
-        icon: Lightbulb,
-        description: 'Control manual'
+        path: '/gestion-unidades', 
+        label: 'Gestión de Unidades', 
+        icon: Settings,
+        description: 'Configuración de unidades'
+      },
+      { 
+        path: '/mapeo-dispositivos', 
+        label: 'Mapeo de Dispositivos', 
+        icon: MapPin,
+        description: 'Ubicación y mapeo'
       },
       { 
         path: '/reportes', 
@@ -157,34 +158,28 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
     // Compatibilidad con roles antiguos
     admin: [
       { 
+        path: '/gestion-usuarios', 
+        label: 'Gestión de Personal', 
+        icon: Users,
+        description: 'Administradores y operadores'
+      },
+      { 
         path: '/monitoreo', 
-        label: 'Dashboard Principal', 
+        label: 'Monitoreo y Control', 
         icon: Activity,
         description: 'Monitoreo en tiempo real'
       },
       { 
-        path: '/control-luminarias', 
-        label: 'Control de Luminarias', 
-        icon: Lightbulb,
-        description: 'Control manual y automático'
-      },
-      { 
-        path: '/configuracion-sensores', 
-        label: 'Configuración', 
+        path: '/gestion-unidades', 
+        label: 'Gestión de Unidades', 
         icon: Settings,
-        description: 'Sensores y automatización'
+        description: 'Configuración de unidades'
       },
       { 
-        path: '/gestion-dispositivos', 
-        label: 'Gestión Dispositivos', 
-        icon: Monitor,
-        description: 'Administrar postes'
-      },
-      { 
-        path: '/gestion-usuarios', 
-        label: 'Gestión Usuarios', 
-        icon: Users,
-        description: 'Administradores y operadores'
+        path: '/mapeo-dispositivos', 
+        label: 'Mapeo de Dispositivos', 
+        icon: MapPin,
+        description: 'Ubicación y mapeo'
       },
       { 
         path: '/reportes', 
@@ -196,15 +191,21 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
     receptionist: [
       { 
         path: '/monitoreo', 
-        label: 'Dashboard Principal', 
+        label: 'Monitoreo y Control', 
         icon: Activity,
         description: 'Monitoreo en tiempo real'
       },
       { 
-        path: '/control-luminarias', 
-        label: 'Control de Luminarias', 
-        icon: Lightbulb,
-        description: 'Control manual'
+        path: '/gestion-unidades', 
+        label: 'Gestión de Unidades', 
+        icon: Settings,
+        description: 'Configuración de unidades'
+      },
+      { 
+        path: '/mapeo-dispositivos', 
+        label: 'Mapeo de Dispositivos', 
+        icon: MapPin,
+        description: 'Ubicación y mapeo'
       },
       { 
         path: '/reportes', 

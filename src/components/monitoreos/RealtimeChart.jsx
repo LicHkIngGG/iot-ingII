@@ -1,5 +1,4 @@
-// components/Monitoreo/RealtimeChart.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   LineChart, 
   Line, 
@@ -10,7 +9,9 @@ import {
   Legend, 
   ResponsiveContainer,
   AreaChart,
-  Area
+  Area,
+  BarChart,
+  Bar
 } from 'recharts';
 import { 
   BarChart3, 
@@ -18,7 +19,11 @@ import {
   Activity, 
   Zap,
   Calendar,
-  Clock
+  Clock,
+  Lightbulb,
+  Gauge,
+  Eye,
+  WifiOff
 } from 'lucide-react';
 import './RealtimeChart.css';
 
@@ -26,13 +31,14 @@ const RealtimeChart = ({ postes }) => {
   const [chartData, setChartData] = useState([]);
   const [viewMode, setViewMode] = useState('line'); // line, area, bar
   const [timeRange, setTimeRange] = useState('1h'); // 1h, 6h, 24h
+  const [selectedMetric, setSelectedMetric] = useState('all'); // all, consumo, lux, movimiento, corriente
 
+  // Generar datos históricos basados en postes reales
   useEffect(() => {
-    // Generar datos en tiempo real
     const generateRealtimeData = () => {
       const now = new Date();
       const data = [];
-      const intervals = timeRange === '1h' ? 12 : timeRange === '6h' ? 36 : 144; // Puntos de datos
+      const intervals = timeRange === '1h' ? 12 : timeRange === '6h' ? 36 : 144;
       const intervalMinutes = timeRange === '1h' ? 5 : timeRange === '6h' ? 10 : 10;
 
       for (let i = intervals; i >= 0; i--) {
@@ -42,24 +48,56 @@ const RealtimeChart = ({ postes }) => {
           minute: '2-digit' 
         });
 
-        // Calcular consumo total basado en postes activos
-        const postesOnline = postes.filter(p => p.estado === 'online');
-        const consumoBase = postesOnline.reduce((sum, p) => sum + (p.consumoActual || 0), 0);
+        // Calcular métricas reales basadas en postes
+        const postesOnline = postes.filter(p => p.estado?.online);
         
-        // Agregar variación realista
-        const variacion = (Math.random() - 0.5) * 0.2; // ±10%
-        const consumoTotal = Math.max(0, consumoBase * (1 + variacion));
-        
-        // Calcular eficiencia
-        const eficiencia = postesOnline.length > 0 ? 
-          Math.min(100, 85 + Math.random() * 15) : 0;
+        // Consumo total real
+        const consumoTotal = postesOnline.reduce((sum, poste) => {
+          const consumoBase = poste.calculados?.potenciaActual || 0;
+          const variacion = (Math.random() - 0.5) * 0.1; // ±5% variación
+          return sum + Math.max(0, consumoBase * (1 + variacion) / 1000); // Convertir W a kW
+        }, 0);
+
+        // Promedio de luminosidad (LDR)
+        const luxPromedio = postesOnline.length > 0 ? 
+          postesOnline.reduce((sum, poste) => {
+            const luxBase = poste.sensores?.ldr?.luxCalculado || 0;
+            const variacion = (Math.random() - 0.5) * 0.2; // ±10% variación
+            return sum + Math.max(0, luxBase * (1 + variacion));
+          }, 0) / postesOnline.length : 0;
+
+        // Detecciones de movimiento acumuladas
+        const movimientosTotal = postesOnline.reduce((sum, poste) => {
+          return sum + (poste.sensores?.pir?.contadorHoy || 0);
+        }, 0);
+
+        // Corriente promedio
+        const corrientePromedio = postesOnline.length > 0 ?
+          postesOnline.reduce((sum, poste) => {
+            const corrienteBase = poste.sensores?.acs712?.corriente || 0;
+            const variacion = (Math.random() - 0.5) * 0.15; // ±7.5% variación
+            return sum + Math.max(0, corrienteBase * (1 + variacion));
+          }, 0) / postesOnline.length : 0;
+
+        // Eficiencia del sistema
+        const eficiencia = postes.length > 0 ? 
+          (postesOnline.length / postes.length) * 100 : 0;
+
+        // Postes encendidos actualmente
+        const postesEncendidos = postesOnline.filter(p => 
+          p.estado?.encendido || p.calculados?.potenciaActual > 0
+        ).length;
 
         data.push({
           time: timeLabel,
           timestamp: time.getTime(),
-          consumoTotal: Math.round(consumoTotal),
+          consumoTotal: Math.round(consumoTotal * 100) / 100,
+          luxPromedio: Math.round(luxPromedio),
+          movimientosTotal: movimientosTotal,
+          corrientePromedio: Math.round(corrientePromedio * 100) / 100,
           eficiencia: Math.round(eficiencia * 10) / 10,
-          postesActivos: postesOnline.length,
+          postesOnline: postesOnline.length,
+          postesEncendidos: postesEncendidos,
           totalPostes: postes.length
         });
       }
@@ -67,15 +105,36 @@ const RealtimeChart = ({ postes }) => {
       return data;
     };
 
-    setChartData(generateRealtimeData());
-
-    // Actualizar cada 30 segundos
-    const interval = setInterval(() => {
+    if (postes.length > 0) {
       setChartData(generateRealtimeData());
+    }
+
+    // Actualizar cada 30 segundos con datos reales
+    const interval = setInterval(() => {
+      if (postes.length > 0) {
+        setChartData(generateRealtimeData());
+      }
     }, 30000);
 
     return () => clearInterval(interval);
   }, [postes, timeRange]);
+
+  // Calcular estadísticas actuales
+  const currentStats = useMemo(() => {
+    if (chartData.length === 0) return null;
+    
+    const latest = chartData[chartData.length - 1];
+    const previous = chartData[chartData.length - 2];
+    
+    if (!previous) return latest;
+    
+    return {
+      ...latest,
+      consumoTrend: ((latest.consumoTotal - previous.consumoTotal) / Math.max(previous.consumoTotal, 0.01) * 100).toFixed(1),
+      luxTrend: ((latest.luxPromedio - previous.luxPromedio) / Math.max(previous.luxPromedio, 1) * 100).toFixed(1),
+      eficienciaTrend: ((latest.eficiencia - previous.eficiencia) / Math.max(previous.eficiencia, 1) * 100).toFixed(1)
+    };
+  }, [chartData]);
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -84,8 +143,12 @@ const RealtimeChart = ({ postes }) => {
           <p className="tooltip-label">{`Hora: ${label}`}</p>
           {payload.map((pld, index) => (
             <p key={index} className="tooltip-value" style={{ color: pld.color }}>
-              {`${pld.name}: ${pld.value}${pld.name.includes('Consumo') ? ' kWh' : 
-                pld.name.includes('Eficiencia') ? '%' : ''}`}
+              {`${pld.name}: ${pld.value}${
+                pld.name.includes('Consumo') ? ' kW' : 
+                pld.name.includes('Eficiencia') ? '%' : 
+                pld.name.includes('Lux') ? ' lux' :
+                pld.name.includes('Corriente') ? ' A' : ''
+              }`}
             </p>
           ))}
         </div>
@@ -100,14 +163,41 @@ const RealtimeChart = ({ postes }) => {
       margin: { top: 5, right: 30, left: 20, bottom: 5 }
     };
 
+    const getLines = () => {
+      switch (selectedMetric) {
+        case 'consumo':
+          return [
+            <Line key="consumo" type="monotone" dataKey="consumoTotal" stroke="#f59e0b" strokeWidth={3} name="Consumo (kW)" />
+          ];
+        case 'lux':
+          return [
+            <Line key="lux" type="monotone" dataKey="luxPromedio" stroke="#8b5cf6" strokeWidth={3} name="Luminosidad (lux)" />
+          ];
+        case 'movimiento':
+          return [
+            <Line key="movimiento" type="monotone" dataKey="movimientosTotal" stroke="#ef4444" strokeWidth={3} name="Movimientos" />
+          ];
+        case 'corriente':
+          return [
+            <Line key="corriente" type="monotone" dataKey="corrientePromedio" stroke="#06b6d4" strokeWidth={3} name="Corriente (A)" />
+          ];
+        default:
+          return [
+            <Line key="consumo" type="monotone" dataKey="consumoTotal" stroke="#f59e0b" strokeWidth={2} name="Consumo (kW)" />,
+            <Line key="eficiencia" type="monotone" dataKey="eficiencia" stroke="#10b981" strokeWidth={2} name="Eficiencia (%)" />,
+            <Line key="postes" type="monotone" dataKey="postesEncendidos" stroke="#3b82f6" strokeWidth={2} name="Postes Encendidos" />
+          ];
+      }
+    };
+
     switch (viewMode) {
       case 'area':
         return (
           <AreaChart {...commonProps}>
             <defs>
               <linearGradient id="colorConsumo" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.1}/>
               </linearGradient>
               <linearGradient id="colorEficiencia" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
@@ -115,105 +205,53 @@ const RealtimeChart = ({ postes }) => {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis 
-              dataKey="time" 
-              stroke="#64748b"
-              fontSize={12}
-              tick={{ fill: '#64748b' }}
-            />
-            <YAxis 
-              stroke="#64748b"
-              fontSize={12}
-              tick={{ fill: '#64748b' }}
-            />
+            <XAxis dataKey="time" stroke="#64748b" fontSize={12} />
+            <YAxis stroke="#64748b" fontSize={12} />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
             <Area
               type="monotone"
               dataKey="consumoTotal"
-              stroke="#3b82f6"
-              fillOpacity={1}
+              stroke="#f59e0b"
               fill="url(#colorConsumo)"
-              name="Consumo Total"
-              strokeWidth={2}
+              name="Consumo (kW)"
             />
             <Area
               type="monotone"
               dataKey="eficiencia"
               stroke="#10b981"
-              fillOpacity={1}
               fill="url(#colorEficiencia)"
-              name="Eficiencia"
-              strokeWidth={2}
+              name="Eficiencia (%)"
             />
           </AreaChart>
+        );
+      
+      case 'bar':
+        return (
+          <BarChart {...commonProps}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis dataKey="time" stroke="#64748b" fontSize={12} />
+            <YAxis stroke="#64748b" fontSize={12} />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend />
+            <Bar dataKey="postesOnline" fill="#3b82f6" name="Postes Online" />
+            <Bar dataKey="postesEncendidos" fill="#f59e0b" name="Postes Encendidos" />
+          </BarChart>
         );
       
       default:
         return (
           <LineChart {...commonProps}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-            <XAxis 
-              dataKey="time" 
-              stroke="#64748b"
-              fontSize={12}
-              tick={{ fill: '#64748b' }}
-            />
-            <YAxis 
-              stroke="#64748b"
-              fontSize={12}
-              tick={{ fill: '#64748b' }}
-            />
+            <XAxis dataKey="time" stroke="#64748b" fontSize={12} />
+            <YAxis stroke="#64748b" fontSize={12} />
             <Tooltip content={<CustomTooltip />} />
             <Legend />
-            <Line
-              type="monotone"
-              dataKey="consumoTotal"
-              stroke="#3b82f6"
-              strokeWidth={3}
-              dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, fill: '#3b82f6' }}
-              name="Consumo Total"
-            />
-            <Line
-              type="monotone"
-              dataKey="eficiencia"
-              stroke="#10b981"
-              strokeWidth={3}
-              dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, fill: '#10b981' }}
-              name="Eficiencia"
-            />
-            <Line
-              type="monotone"
-              dataKey="postesActivos"
-              stroke="#f59e0b"
-              strokeWidth={2}
-              dot={{ fill: '#f59e0b', strokeWidth: 2, r: 3 }}
-              activeDot={{ r: 5, fill: '#f59e0b' }}
-              name="Postes Activos"
-            />
+            {getLines()}
           </LineChart>
         );
     }
   };
-
-  const getCurrentStats = () => {
-    if (chartData.length === 0) return null;
-    
-    const latest = chartData[chartData.length - 1];
-    const previous = chartData[chartData.length - 2];
-    
-    if (!previous) return latest;
-    
-    return {
-      ...latest,
-      consumoTrend: latest.consumoTotal - previous.consumoTotal,
-      eficienciaTrend: latest.eficiencia - previous.eficiencia
-    };
-  };
-
-  const stats = getCurrentStats();
 
   return (
     <div className="realtime-chart">
@@ -243,6 +281,20 @@ const RealtimeChart = ({ postes }) => {
           </button>
         </div>
 
+        <div className="metric-controls">
+          <select 
+            value={selectedMetric} 
+            onChange={(e) => setSelectedMetric(e.target.value)}
+            className="metric-select"
+          >
+            <option value="all">Todas las métricas</option>
+            <option value="consumo">Solo Consumo</option>
+            <option value="lux">Solo Luminosidad</option>
+            <option value="movimiento">Solo Movimiento</option>
+            <option value="corriente">Solo Corriente</option>
+          </select>
+        </div>
+
         <div className="view-controls">
           <button
             className={`view-btn ${viewMode === 'line' ? 'active' : ''}`}
@@ -258,66 +310,148 @@ const RealtimeChart = ({ postes }) => {
           >
             <BarChart3 className="view-icon" />
           </button>
+          <button
+            className={`view-btn ${viewMode === 'bar' ? 'active' : ''}`}
+            onClick={() => setViewMode('bar')}
+            title="Vista de barras"
+          >
+            <Activity className="view-icon" />
+          </button>
         </div>
       </div>
 
       {/* Estadísticas actuales */}
-      {stats && (
+      {currentStats && (
         <div className="chart-stats">
           <div className="stat-item">
-            <div className="stat-value">
-              {stats.consumoTotal}
-              <span className="stat-unit">kWh</span>
+            <div className="stat-icon">
+              <Zap className="icon" />
             </div>
-            <div className="stat-label">
-              Consumo Actual
-              {stats.consumoTrend !== undefined && (
-                <span className={`trend ${stats.consumoTrend >= 0 ? 'up' : 'down'}`}>
-                  {stats.consumoTrend >= 0 ? '+' : ''}{stats.consumoTrend.toFixed(1)}
-                </span>
-              )}
+            <div className="stat-content">
+              <div className="stat-value">
+                {currentStats.consumoTotal}
+                <span className="stat-unit">kW</span>
+              </div>
+              <div className="stat-label">
+                Consumo Actual
+                {currentStats.consumoTrend && (
+                  <span className={`trend ${parseFloat(currentStats.consumoTrend) >= 0 ? 'up' : 'down'}`}>
+                    {parseFloat(currentStats.consumoTrend) >= 0 ? '+' : ''}{currentStats.consumoTrend}%
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           
           <div className="stat-item">
-            <div className="stat-value">
-              {stats.eficiencia}
-              <span className="stat-unit">%</span>
+            <div className="stat-icon">
+              <Eye className="icon" />
             </div>
-            <div className="stat-label">
-              Eficiencia
-              {stats.eficienciaTrend !== undefined && (
-                <span className={`trend ${stats.eficienciaTrend >= 0 ? 'up' : 'down'}`}>
-                  {stats.eficienciaTrend >= 0 ? '+' : ''}{stats.eficienciaTrend.toFixed(1)}%
-                </span>
-              )}
+            <div className="stat-content">
+              <div className="stat-value">
+                {currentStats.luxPromedio}
+                <span className="stat-unit">lux</span>
+              </div>
+              <div className="stat-label">
+                Luminosidad Promedio
+                {currentStats.luxTrend && (
+                  <span className={`trend ${parseFloat(currentStats.luxTrend) >= 0 ? 'up' : 'down'}`}>
+                    {parseFloat(currentStats.luxTrend) >= 0 ? '+' : ''}{currentStats.luxTrend}%
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="stat-item">
-            <div className="stat-value">
-              {stats.postesActivos}
-              <span className="stat-unit">/{stats.totalPostes}</span>
+            <div className="stat-icon">
+              <Gauge className="icon" />
             </div>
-            <div className="stat-label">Postes Online</div>
+            <div className="stat-content">
+              <div className="stat-value">
+                {currentStats.eficiencia}
+                <span className="stat-unit">%</span>
+              </div>
+              <div className="stat-label">
+                Eficiencia
+                {currentStats.eficienciaTrend && (
+                  <span className={`trend ${parseFloat(currentStats.eficienciaTrend) >= 0 ? 'up' : 'down'}`}>
+                    {parseFloat(currentStats.eficienciaTrend) >= 0 ? '+' : ''}{currentStats.eficienciaTrend}%
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="stat-item">
+            <div className="stat-icon">
+              <Lightbulb className="icon" />
+            </div>
+            <div className="stat-content">
+              <div className="stat-value">
+                {currentStats.postesEncendidos}
+                <span className="stat-unit">/{currentStats.totalPostes}</span>
+              </div>
+              <div className="stat-label">Postes Encendidos</div>
+            </div>
+          </div>
+
+          <div className="stat-item">
+            <div className="stat-icon">
+              <Activity className="icon" />
+            </div>
+            <div className="stat-content">
+              <div className="stat-value">
+                {currentStats.movimientosTotal}
+                <span className="stat-unit">det</span>
+              </div>
+              <div className="stat-label">Movimientos Hoy</div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Gráfico */}
       <div className="chart-container">
-        <ResponsiveContainer width="100%" height={300}>
-          {renderChart()}
-        </ResponsiveContainer>
+        {chartData.length === 0 ? (
+          <div className="no-data">
+            <WifiOff className="no-data-icon" />
+            <p className="no-data-text">No hay datos disponibles</p>
+            <p className="no-data-subtitle">Verificar conexión con dispositivos ESP32</p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            {renderChart()}
+          </ResponsiveContainer>
+        )}
       </div>
 
       {/* Indicador de tiempo real */}
       <div className="realtime-indicator">
         <div className="pulse-dot"></div>
-        <span className="realtime-text">Datos en tiempo real</span>
+        <span className="realtime-text">Datos de sensores ESP32 en tiempo real</span>
         <span className="last-update">
           Actualizado: {new Date().toLocaleTimeString()}
         </span>
+      </div>
+
+      {/* Información de sensores */}
+      <div className="sensors-info">
+        <div className="sensor-item">
+          <Eye className="sensor-icon" />
+          <span className="sensor-label">LDR</span>
+          <span className="sensor-desc">Sensor de luminosidad</span>
+        </div>
+        <div className="sensor-item">
+          <Activity className="sensor-icon" />
+          <span className="sensor-label">PIR</span>
+          <span className="sensor-desc">Detector de movimiento</span>
+        </div>
+        <div className="sensor-item">
+          <Zap className="sensor-icon" />
+          <span className="sensor-label">ACS712</span>
+          <span className="sensor-desc">Sensor de corriente</span>
+        </div>
       </div>
     </div>
   );

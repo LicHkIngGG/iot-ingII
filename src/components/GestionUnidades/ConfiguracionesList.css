@@ -1,0 +1,906 @@
+/* Estilos para ConfiguracionesList */
+.configuraciones-list {
+  padding: 25px;
+  background: #f8fafc;
+  min-height: 100vh;
+}
+
+/* Controles superiores */
+.list-controls {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 25px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+.search-section {
+  min-width: 300px;
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  width: 18px;
+  height: 18px;
+  color: #9ca3af;
+  z-index: 1;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 12px 12px 45px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  background: #f9fafb;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  background: white;
+}
+
+.search-input::placeholder {
+  color: #9ca3af;
+}
+
+/* Filtros */
+.filter-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.filter-icon {
+  width: 20px;
+  height: 20px;
+  color: #6b7280;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.filter-btn:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}
+
+.filter-btn.active {
+  background: #4f46e5;
+  border-color: #4f46e5;
+  color: white;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+}
+
+.filter-btn.all.active {
+  background: #6b7280;
+  border-color: #6b7280;
+}
+
+.filter-btn.active.active {
+  background: #10b981;
+  border-color: #10b981;
+}
+
+.filter-btn.online.active {
+  background: #059669;
+  border-color: #059669;
+}
+
+.filter-btn.offline.active {
+  background: #ef4444;
+  border-color: #ef4444;
+}
+
+.filter-count {
+  background: rgba(255, 255, 255, 0.8);
+  color: #374151;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.filter-btn.active .filter-count {
+  background: rgba(255, 255, 255, 0.9);
+  color: #1f2937;
+}
+
+/* Ordenamiento */
+.sort-section {
+  min-width: 200px;
+}
+
+.sort-select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  color: #374151;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sort-select:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+/* Controles de vista */
+.view-controls {
+  display: flex;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.view-btn {
+  padding: 10px 12px;
+  border: none;
+  background: white;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.view-btn:hover {
+  background: #f3f4f6;
+}
+
+.view-btn.active {
+  background: #4f46e5;
+  color: white;
+}
+
+.view-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* Resumen de configuraciones */
+.configs-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.summary-item {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  transition: all 0.3s ease;
+}
+
+.summary-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.summary-icon {
+  width: 24px;
+  height: 24px;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.summary-item.total .summary-icon {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+}
+
+.summary-item.active .summary-icon {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.summary-item.online .summary-icon {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+}
+
+.summary-item.offline .summary-icon {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+.summary-content {
+  flex: 1;
+}
+
+.summary-count {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1;
+}
+
+.summary-label {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+/* Contenedor de configuraciones */
+.configs-container {
+  margin-bottom: 30px;
+}
+
+.configs-content.grid .configs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 25px;
+}
+
+.configs-content.list .configs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* Tarjetas de configuración (Vista Grid) */
+.config-card {
+  background: white;
+  border-radius: 16px;
+  padding: 25px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f1f5f9;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.config-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #6b7280, #6b7280);
+  transition: all 0.3s ease;
+}
+
+.config-card.green::before {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+.config-card.red::before {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.config-card.yellow::before {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.config-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.config-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.config-info .config-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 8px 0;
+}
+
+.config-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.status-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.status-icon.green {
+  color: #10b981;
+}
+
+.status-icon.red {
+  color: #ef4444;
+}
+
+.status-icon.yellow {
+  color: #f59e0b;
+}
+
+.status-text {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-text.green {
+  color: #10b981;
+}
+
+.status-text.red {
+  color: #ef4444;
+}
+
+.status-text.yellow {
+  color: #f59e0b;
+}
+
+.config-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.action-btn {
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn.edit {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.action-btn.edit:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.action-btn.apply {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.action-btn.apply:hover {
+  background: #bfdbfe;
+}
+
+.action-btn.apply:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.action-btn.restart {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.action-btn.restart:hover {
+  background: #fde68a;
+}
+
+.action-btn.restart:disabled {
+  background: #f3f4f6;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.action-btn.delete {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.action-btn.delete:hover {
+  background: #fecaca;
+}
+
+.action-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Detalles de configuración */
+.config-details {
+  margin-bottom: 20px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.detail-label {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.detail-value {
+  font-size: 14px;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+/* Sensores overview */
+.sensors-overview {
+  margin-bottom: 20px;
+}
+
+.sensors-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+}
+
+.sensors-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.sensor-indicator {
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
+}
+
+.sensor-indicator.active {
+  background: #f0fdf4;
+  border-color: #16a34a;
+}
+
+.sensor-indicator.inactive {
+  background: #fef2f2;
+  border-color: #dc2626;
+}
+
+.sensor-icon {
+  width: 16px;
+  height: 16px;
+  margin-bottom: 5px;
+}
+
+.sensor-indicator.active .sensor-icon {
+  color: #16a34a;
+}
+
+.sensor-indicator.inactive .sensor-icon {
+  color: #dc2626;
+}
+
+.sensor-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+  color: #374151;
+}
+
+.sensor-value {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+/* Estado de automatización */
+.automation-status {
+  margin-bottom: 20px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.automation-item {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+
+.automation-item:last-child {
+  margin-bottom: 0;
+}
+
+.automation-label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.automation-value {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.automation-value.enabled {
+  color: #16a34a;
+}
+
+.automation-value.disabled {
+  color: #dc2626;
+}
+
+/* Footer de configuración */
+.config-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 15px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.device-info {
+  display: flex;
+  gap: 15px;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.info-icon {
+  width: 14px;
+  height: 14px;
+  color: #6b7280;
+}
+
+.info-text {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.last-update {
+  text-align: right;
+}
+
+.update-text {
+  font-size: 11px;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Items de lista (Vista List) */
+.config-list-item {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  border: 1px solid #f1f5f9;
+  transition: all 0.3s ease;
+  border-left: 4px solid #6b7280;
+}
+
+.config-list-item.green {
+  border-left-color: #10b981;
+}
+
+.config-list-item.red {
+  border-left-color: #ef4444;
+}
+
+.config-list-item.yellow {
+  border-left-color: #f59e0b;
+}
+
+.config-list-item:hover {
+  transform: translateX(3px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.list-item-content {
+  display: grid;
+  grid-template-columns: 2fr 1fr 2fr 1fr;
+  gap: 20px;
+  align-items: center;
+}
+
+.list-item-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.list-item-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.green {
+ background: #dcfce7;
+ color: #166534;
+}
+
+.status-badge.red {
+ background: #fee2e2;
+ color: #991b1b;
+}
+
+.status-badge.yellow {
+ background: #fef3c7;
+ color: #92400e;
+}
+
+.list-item-details {
+ display: flex;
+ flex-direction: column;
+ gap: 4px;
+}
+
+.list-item-sensors {
+ display: flex;
+ gap: 8px;
+}
+
+.sensor-mini {
+ display: flex;
+ align-items: center;
+ gap: 4px;
+ padding: 4px 8px;
+ border-radius: 6px;
+ font-size: 11px;
+ font-weight: 600;
+}
+
+.sensor-mini.ok {
+ background: #dcfce7;
+ color: #166534;
+}
+
+.sensor-mini.disabled {
+ background: #f3f4f6;
+ color: #6b7280;
+}
+
+.sensor-mini-icon {
+ width: 12px;
+ height: 12px;
+}
+
+.list-item-automation {
+ text-align: center;
+}
+
+.automation-status {
+ padding: 6px 12px;
+ border-radius: 8px;
+ font-size: 12px;
+ font-weight: 600;
+ background: #f3f4f6;
+ color: #374151;
+ margin-bottom: 5px;
+}
+
+.uptime-status {
+ font-size: 11px;
+ color: #6b7280;
+}
+
+.list-item-actions {
+ display: flex;
+ gap: 8px;
+ justify-content: flex-end;
+ align-items: center;
+}
+
+.list-action-btn {
+ padding: 6px;
+ border: none;
+ border-radius: 6px;
+ cursor: pointer;
+ transition: all 0.2s ease;
+}
+
+.list-action-btn.edit {
+ background: #f3f4f6;
+ color: #374151;
+}
+
+.list-action-btn.apply {
+ background: #dbeafe;
+ color: #1d4ed8;
+}
+
+.list-action-btn.restart {
+ background: #fef3c7;
+ color: #d97706;
+}
+
+.list-action-btn.delete {
+ background: #fee2e2;
+ color: #dc2626;
+}
+
+.list-action-btn:disabled {
+ background: #f9fafb;
+ color: #9ca3af;
+ cursor: not-allowed;
+}
+
+/* Estado sin configuraciones */
+.no-configs {
+ text-align: center;
+ padding: 60px 20px;
+ color: #6b7280;
+}
+
+.no-configs-icon {
+ width: 48px;
+ height: 48px;
+ margin: 0 auto 20px;
+ color: #d1d5db;
+}
+
+.no-configs-title {
+ font-size: 1.2rem;
+ font-weight: 600;
+ margin: 0 0 10px 0;
+ color: #374151;
+}
+
+.no-configs-subtitle {
+ font-size: 14px;
+ line-height: 1.5;
+}
+
+/* Información de acciones rápidas */
+.quick-actions-info {
+ background: white;
+ padding: 25px;
+ border-radius: 12px;
+ box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+ margin-top: 30px;
+}
+
+.info-title {
+ font-size: 1.1rem;
+ font-weight: 600;
+ color: #374151;
+ margin-bottom: 15px;
+}
+
+.actions-grid {
+ display: grid;
+ grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+ gap: 15px;
+}
+
+.action-info {
+ display: flex;
+ align-items: center;
+ gap: 12px;
+ padding: 12px;
+ background: #f8fafc;
+ border-radius: 8px;
+ border: 1px solid #e2e8f0;
+}
+
+.action-info-icon {
+ width: 16px;
+ height: 16px;
+ color: #4f46e5;
+}
+
+.action-info span {
+ font-size: 14px;
+ color: #374151;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+ .list-controls {
+   grid-template-columns: 1fr;
+   gap: 15px;
+ }
+ 
+ .configs-content.grid .configs-grid {
+   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+ }
+ 
+ .list-item-content {
+   grid-template-columns: 1fr;
+   gap: 15px;
+ }
+}
+
+@media (max-width: 768px) {
+ .filter-buttons {
+   flex-wrap: wrap;
+ }
+ 
+ .configs-content.grid .configs-grid {
+   grid-template-columns: 1fr;
+ }
+ 
+ .sensors-grid {
+   grid-template-columns: 1fr;
+ }
+ 
+ .device-info {
+   flex-direction: column;
+   gap: 8px;
+ }
+}
+
+@media (max-width: 480px) {
+ .configuraciones-list {
+   padding: 15px;
+ }
+ 
+ .list-controls {
+   padding: 15px;
+ }
+ 
+ .config-card, .config-list-item {
+   padding: 15px;
+ }
+ 
+ .config-actions, .list-item-actions {
+   flex-wrap: wrap;
+ }
+}
