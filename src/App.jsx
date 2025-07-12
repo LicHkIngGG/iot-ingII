@@ -19,6 +19,7 @@ import DashboardLayout from './components/barra-nav-lateral/Layout.jsx';
 
 // Componente temporal para configuración
 import SetupSystem from './components/SetupSystem.jsx';
+import { firebaseService } from './services/firebaseService';
 
 function App() {
   const [userRole, setUserRole] = useState(null);

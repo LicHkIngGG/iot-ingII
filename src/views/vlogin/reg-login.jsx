@@ -213,15 +213,6 @@ return (
       </form>
 
       {error && <div className="error">{error}</div>}
-      {/* Información de prueba para desarrollo */}
-      <div className="test-info">
-        <p><strong>Usuarios de prueba:</strong></p>
-        <p>Email: roberto.sea@alto.gov.bo</p>
-        <p>Contraseña: 123456</p>
-        <hr />
-        <p>Email: jose.rojas@alto.gov.bo</p>
-        <p>Contraseña: 123456</p>
-      </div>
     </div>
   </div>
 );

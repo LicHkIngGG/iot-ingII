@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   AlertTriangle, 
   Zap, 
@@ -21,178 +21,217 @@ import {
 import './AlertCenter.css';
 
 const AlertCenter = ({ alertas, onAlertaClick, userRole, postes = [] }) => {
-  const [filter, setFilter] = useState('all'); // all, unread, critical, high, medium, low, auto
+  const [filter, setFilter] = useState('all');
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [autoAlertas, setAutoAlertas] = useState([]);
+  
+  // ✅ Usar useRef para evitar dependencias problemáticas
+  const postesRef = useRef(postes);
+  const lastAlertGenerationRef = useRef(0);
 
-  // Generar alertas automáticas basadas en estado de postes y sensores
+  // ✅ Actualizar ref cuando cambian los postes
   useEffect(() => {
-    const generateAutoAlerts = () => {
-      const newAutoAlerts = [];
-      const now = new Date();
+    postesRef.current = postes;
+  }, [postes]);
 
-      postes.forEach(poste => {
-        // Verificar conectividad
-        if (!poste.estado?.online) {
+  // ✅ useCallback para evitar recreación de función
+  const generateAutoAlerts = useCallback(() => {
+    const currentPostes = postesRef.current;
+    const now = new Date();
+    
+    // ✅ Evitar generación excesiva de alertas
+    const timeSinceLastGeneration = now.getTime() - lastAlertGenerationRef.current;
+    if (timeSinceLastGeneration < 30000) { // Mínimo 30 segundos entre generaciones
+      return;
+    }
+    
+    lastAlertGenerationRef.current = now.getTime();
+    
+    const newAutoAlerts = [];
+
+    currentPostes.forEach(poste => {
+      // Verificar conectividad
+      if (!poste.estado?.online) {
+        newAutoAlerts.push({
+          id: `auto_offline_${poste.id}`,
+          tipo: 'comunicacion',
+          severidad: 'critical',
+          mensaje: `Dispositivo ${poste.nombre} desconectado`,
+          posteId: poste.id,
+          ubicacion: poste.ubicacion,
+          detalles: 'El dispositivo ESP32 no responde a las comunicaciones WebSocket',
+          timestamp: now,
+          leida: false,
+          automatica: true,
+          icono: WifiOff
+        });
+      }
+
+      // Verificar sensores
+      if (poste.sensores) {
+        // Sensor LDR
+        if (poste.sensores.ldr && !poste.sensores.ldr.funcionando) {
           newAutoAlerts.push({
-            id: `auto_offline_${poste.id}`,
-            tipo: 'comunicacion',
-            severidad: 'critical',
-            mensaje: `Dispositivo ${poste.nombre} desconectado`,
+            id: `auto_ldr_${poste.id}`,
+            tipo: 'sensor',
+            severidad: 'high',
+            mensaje: `Sensor LDR no responde en ${poste.nombre}`,
             posteId: poste.id,
             ubicacion: poste.ubicacion,
-            detalles: 'El dispositivo ESP32 no responde a las comunicaciones WebSocket',
+            detalles: `Valor raw: ${poste.sensores.ldr.valorRaw || 'N/A'}, Lux calculado: ${poste.sensores.ldr.luxCalculado || 'N/A'}`,
             timestamp: now,
             leida: false,
             automatica: true,
-            icono: WifiOff
+            icono: Eye
           });
         }
 
-        // Verificar sensores
-        if (poste.sensores) {
-          // Sensor LDR
-          if (poste.sensores.ldr && !poste.sensores.ldr.funcionando) {
-            newAutoAlerts.push({
-              id: `auto_ldr_${poste.id}`,
-              tipo: 'sensor',
-              severidad: 'high',
-              mensaje: `Sensor LDR no responde en ${poste.nombre}`,
-              posteId: poste.id,
-              ubicacion: poste.ubicacion,
-              detalles: `Valor raw: ${poste.sensores.ldr.valorRaw || 'N/A'}, Lux calculado: ${poste.sensores.ldr.luxCalculado || 'N/A'}`,
-              timestamp: now,
-              leida: false,
-              automatica: true,
-              icono: Eye
-            });
-          }
-
-          // Sensor PIR
-          if (poste.sensores.pir && !poste.sensores.pir.funcionando) {
-            newAutoAlerts.push({
-              id: `auto_pir_${poste.id}`,
-              tipo: 'sensor',
-              severidad: 'medium',
-              mensaje: `Detector de movimiento falla en ${poste.nombre}`,
-              posteId: poste.id,
-              ubicacion: poste.ubicacion,
-              detalles: `Última detección: ${poste.sensores.pir.ultimaDeteccion || 'Nunca'}`,
-              timestamp: now,
-              leida: false,
-              automatica: true,
-              icono: Activity
-            });
-          }
-
-          // Sensor ACS712
-          if (poste.sensores.acs712 && !poste.sensores.acs712.funcionando) {
-            newAutoAlerts.push({
-              id: `auto_acs_${poste.id}`,
-              tipo: 'sensor',
-              severidad: 'high',
-              mensaje: `Sensor de corriente falla en ${poste.nombre}`,
-              posteId: poste.id,
-              ubicacion: poste.ubicacion,
-              detalles: `Corriente actual: ${poste.sensores.acs712.corriente || 0}A`,
-              timestamp: now,
-              leida: false,
-              automatica: true,
-              icono: Zap
-            });
-          }
+        // Sensor PIR
+        if (poste.sensores.pir && !poste.sensores.pir.funcionando) {
+          newAutoAlerts.push({
+            id: `auto_pir_${poste.id}`,
+            tipo: 'sensor',
+            severidad: 'medium',
+            mensaje: `Detector de movimiento falla en ${poste.nombre}`,
+            posteId: poste.id,
+            ubicacion: poste.ubicacion,
+            detalles: `Última detección: ${poste.sensores.pir.ultimaDeteccion || 'Nunca'}`,
+            timestamp: now,
+            leida: false,
+            automatica: true,
+            icono: Activity
+          });
         }
 
-        // Verificar consumo anormal
-        if (poste.calculados) {
-          const consumoEsperado = 60 * 0.22; // 60W por ~22 horas
-          const consumoActual = poste.calculados.consumoHoy || 0;
-          
-          if (consumoActual > consumoEsperado * 1.3) {
-            newAutoAlerts.push({
-              id: `auto_consumo_alto_${poste.id}`,
-              tipo: 'consumo',
-              severidad: 'high',
-              mensaje: `Consumo anormalmente alto en ${poste.nombre}`,
-              posteId: poste.id,
-              ubicacion: poste.ubicacion,
-              detalles: `Consumo: ${consumoActual.toFixed(2)}kWh, Esperado: ${consumoEsperado.toFixed(2)}kWh`,
-              timestamp: now,
-              leida: false,
-              automatica: true,
-              icono: Gauge
-            });
-          } else if (consumoActual < consumoEsperado * 0.1 && poste.estado?.encendido) {
-            newAutoAlerts.push({
-              id: `auto_consumo_bajo_${poste.id}`,
-              tipo: 'consumo',
-              severidad: 'medium',
-              mensaje: `Consumo anormalmente bajo en ${poste.nombre}`,
-              posteId: poste.id,
-              ubicacion: poste.ubicacion,
-              detalles: `Consumo: ${consumoActual.toFixed(2)}kWh, dispositivo reportado como encendido`,
-              timestamp: now,
-              leida: false,
-              automatica: true,
-              icono: Lightbulb
-            });
-          }
+        // Sensor ACS712
+        if (poste.sensores.acs712 && !poste.sensores.acs712.funcionando) {
+          newAutoAlerts.push({
+            id: `auto_acs_${poste.id}`,
+            tipo: 'sensor',
+            severidad: 'high',
+            mensaje: `Sensor de corriente falla en ${poste.nombre}`,
+            posteId: poste.id,
+            ubicacion: poste.ubicacion,
+            detalles: `Corriente actual: ${poste.sensores.acs712.corriente || 0}A`,
+            timestamp: now,
+            leida: false,
+            automatica: true,
+            icono: Zap
+          });
+        }
+      }
 
-          // Verificar eficiencia baja
-          if (poste.calculados.eficienciaHoy < 70) {
-            newAutoAlerts.push({
-              id: `auto_eficiencia_${poste.id}`,
-              tipo: 'rendimiento',
-              severidad: 'medium',
-              mensaje: `Eficiencia baja en ${poste.nombre}`,
-              posteId: poste.id,
-              ubicacion: poste.ubicacion,
-              detalles: `Eficiencia actual: ${poste.calculados.eficienciaHoy}%, umbral mínimo: 70%`,
-              timestamp: now,
-              leida: false,
-              automatica: true,
-              icono: Gauge
-            });
-          }
+      // Verificar consumo anormal
+      if (poste.calculados) {
+        const consumoEsperado = 60 * 0.22; // 60W por ~22 horas
+        const consumoActual = poste.calculados.consumoHoy || 0;
+        
+        if (consumoActual > consumoEsperado * 1.3) {
+          newAutoAlerts.push({
+            id: `auto_consumo_alto_${poste.id}`,
+            tipo: 'consumo',
+            severidad: 'high',
+            mensaje: `Consumo anormalmente alto en ${poste.nombre}`,
+            posteId: poste.id,
+            ubicacion: poste.ubicacion,
+            detalles: `Consumo: ${consumoActual.toFixed(2)}kWh, Esperado: ${consumoEsperado.toFixed(2)}kWh`,
+            timestamp: now,
+            leida: false,
+            automatica: true,
+            icono: Gauge
+          });
+        } else if (consumoActual < consumoEsperado * 0.1 && poste.estado?.encendido) {
+          newAutoAlerts.push({
+            id: `auto_consumo_bajo_${poste.id}`,
+            tipo: 'consumo',
+            severidad: 'medium',
+            mensaje: `Consumo anormalmente bajo en ${poste.nombre}`,
+            posteId: poste.id,
+            ubicacion: poste.ubicacion,
+            detalles: `Consumo: ${consumoActual.toFixed(2)}kWh, dispositivo reportado como encendido`,
+            timestamp: now,
+            leida: false,
+            automatica: true,
+            icono: Lightbulb
+          });
         }
 
-        // Verificar tiempo sin actualizarse (dispositivo zombie)
-        if (poste.estado?.ultimaActualizacion) {
-          const lastUpdate = poste.estado.ultimaActualizacion.toDate ? 
-            poste.estado.ultimaActualizacion.toDate() : 
-            new Date(poste.estado.ultimaActualizacion);
-          const timeDiff = (now - lastUpdate) / 1000 / 60; // minutos
-
-          if (timeDiff > 10 && poste.estado?.online) { // Más de 10 minutos sin actualizar
-            newAutoAlerts.push({
-              id: `auto_stale_${poste.id}`,
-              tipo: 'comunicacion',
-              severidad: 'medium',
-              mensaje: `${poste.nombre} sin datos actualizados`,
-              posteId: poste.id,
-              ubicacion: poste.ubicacion,
-              detalles: `Última actualización hace ${Math.round(timeDiff)} minutos`,
-              timestamp: now,
-              leida: false,
-              automatica: true,
-              icono: Clock
-            });
-          }
+        // Verificar eficiencia baja
+        if (poste.calculados.eficienciaHoy < 70) {
+          newAutoAlerts.push({
+            id: `auto_eficiencia_${poste.id}`,
+            tipo: 'rendimiento',
+            severidad: 'medium',
+            mensaje: `Eficiencia baja en ${poste.nombre}`,
+            posteId: poste.id,
+            ubicacion: poste.ubicacion,
+            detalles: `Eficiencia actual: ${poste.calculados.eficienciaHoy}%, umbral mínimo: 70%`,
+            timestamp: now,
+            leida: false,
+            automatica: true,
+            icono: Gauge
+          });
         }
-      });
+      }
 
-      setAutoAlertas(newAutoAlerts);
-    };
+      // Verificar tiempo sin actualizarse (dispositivo zombie)
+      if (poste.estado?.ultimaActualizacion) {
+        const lastUpdate = poste.estado.ultimaActualizacion.toDate ? 
+          poste.estado.ultimaActualizacion.toDate() : 
+          new Date(poste.estado.ultimaActualizacion);
+        const timeDiff = (now - lastUpdate) / 1000 / 60; // minutos
 
-    generateAutoAlerts();
-    
-    // Actualizar alertas automáticas cada 60 segundos
-    const interval = setInterval(generateAutoAlerts, 60000);
+        if (timeDiff > 10 && poste.estado?.online) { // Más de 10 minutos sin actualizar
+          newAutoAlerts.push({
+            id: `auto_stale_${poste.id}`,
+            tipo: 'comunicacion',
+            severidad: 'medium',
+            mensaje: `${poste.nombre} sin datos actualizados`,
+            posteId: poste.id,
+            ubicacion: poste.ubicacion,
+            detalles: `Última actualización hace ${Math.round(timeDiff)} minutos`,
+            timestamp: now,
+            leida: false,
+            automatica: true,
+            icono: Clock
+          });
+        }
+      }
+    });
+
+    // ✅ Solo actualizar si hay cambios significativos
+    setAutoAlertas(prevAlerts => {
+      const existingIds = new Set(prevAlerts.map(a => a.id));
+      const newIds = new Set(newAutoAlerts.map(a => a.id));
+      
+      // Verificar si hay diferencias
+      if (existingIds.size !== newIds.size || 
+          ![...existingIds].every(id => newIds.has(id))) {
+        return newAutoAlerts;
+      }
+      
+      return prevAlerts; // No cambios, mantener estado anterior
+    });
+  }, []); // ✅ Sin dependencias para evitar loop
+
+  // ✅ useEffect separado y controlado para la generación inicial
+  useEffect(() => {
+    if (postes.length > 0) {
+      // Generar alertas iniciales con delay
+      const timeoutId = setTimeout(generateAutoAlerts, 1000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [postes.length, generateAutoAlerts]); // ✅ Solo depende del length, no del array completo
+
+  // ✅ useEffect separado para el intervalo
+  useEffect(() => {
+    // Actualizar alertas automáticas cada 2 minutos (no cada minuto)
+    const interval = setInterval(generateAutoAlerts, 120000);
     
     return () => clearInterval(interval);
-  }, [postes]);
+  }, [generateAutoAlerts]);
 
-  // Combinar alertas manuales y automáticas
+  // ✅ Memoizar combinación de alertas
   const allAlertas = useMemo(() => {
     const combined = [...alertas, ...autoAlertas];
     return combined.sort((a, b) => {
@@ -202,16 +241,20 @@ const AlertCenter = ({ alertas, onAlertaClick, userRole, postes = [] }) => {
     });
   }, [alertas, autoAlertas]);
 
-  // Reproducir sonido para alertas críticas
+  // ✅ useEffect optimizado para sonidos
   useEffect(() => {
-    if (soundEnabled) {
-      const criticalAlerts = allAlertas.filter(a => 
-        a.severidad === 'critical' && !a.leida && 
-        a.timestamp && (new Date() - (a.timestamp.toDate ? a.timestamp.toDate() : new Date(a.timestamp))) < 5000
-      );
-      
-      if (criticalAlerts.length > 0) {
-        // Crear sonido de alerta
+    if (!soundEnabled || allAlertas.length === 0) return;
+    
+    const criticalAlerts = allAlertas.filter(a => 
+      a.severidad === 'critical' && 
+      !a.leida && 
+      a.timestamp && 
+      (new Date() - (a.timestamp.toDate ? a.timestamp.toDate() : new Date(a.timestamp))) < 5000
+    );
+    
+    if (criticalAlerts.length > 0) {
+      // ✅ Crear sonido de alerta de forma segura
+      try {
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
@@ -224,9 +267,11 @@ const AlertCenter = ({ alertas, onAlertaClick, userRole, postes = [] }) => {
         
         oscillator.start();
         oscillator.stop(audioContext.currentTime + 0.2);
+      } catch (error) {
+        console.warn('No se pudo reproducir sonido de alerta:', error);
       }
     }
-  }, [allAlertas, soundEnabled]);
+  }, [allAlertas.length, soundEnabled]); // ✅ Solo dependencias necesarias
 
   const getAlertIcon = (tipo, customIcon) => {
     if (customIcon) return customIcon;
@@ -300,7 +345,7 @@ const AlertCenter = ({ alertas, onAlertaClick, userRole, postes = [] }) => {
     return alerta.severidad === filter;
   });
 
-  const handleAlertClick = (alerta) => {
+  const handleAlertClick = useCallback((alerta) => {
     if (userRole === 'administrador' && !alerta.leida) {
       if (alerta.automatica) {
         // Para alertas automáticas, marcar como leída localmente
@@ -309,19 +354,19 @@ const AlertCenter = ({ alertas, onAlertaClick, userRole, postes = [] }) => {
         ));
       } else {
         // Para alertas de Firebase, usar el callback
-        onAlertaClick(alerta.id);
+        onAlertaClick?.(alerta.id);
       }
     }
-  };
+  }, [userRole, onAlertaClick]);
 
-  const alertCounts = {
+  const alertCounts = useMemo(() => ({
     total: allAlertas.length,
     unread: allAlertas.filter(a => !a.leida).length,
     critical: allAlertas.filter(a => a.severidad === 'critical').length,
     high: allAlertas.filter(a => a.severidad === 'high').length,
     medium: allAlertas.filter(a => a.severidad === 'medium').length,
     auto: allAlertas.filter(a => a.automatica).length
-  };
+  }), [allAlertas]);
 
   return (
     <div className="alert-center">
