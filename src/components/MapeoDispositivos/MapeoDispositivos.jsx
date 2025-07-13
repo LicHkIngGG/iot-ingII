@@ -1,8 +1,8 @@
-// src/components/MapeoDispositivos/MapeoDispositivos.jsx
+// src/components/MapeoDispositivos/MapeoDispositivos.jsx - VERSIÓN FINAL FUNCIONAL
 import React, { useState, useEffect } from 'react';
 import { FirestoreManager } from '../../utils/firestore';
 
-// HTTP Manager Class con cambio de IP
+// HTTP Manager Class con cambio de IP corregido
 class HttpManager {
   constructor(ip, port = 80) {
     this.ip = ip;
@@ -14,7 +14,7 @@ class HttpManager {
       onDisconnect: [],
       onMessage: [],
       onError: [],
-      onIPChanged: [] // NUEVO: Callback para cambio de IP
+      onIPChanged: []
     };
     this.pollInterval = null;
     this.reconnectAttempts = 0;
@@ -25,7 +25,6 @@ class HttpManager {
     try {
       console.log(`🔄 Conectando a ${this.baseUrl}`);
       
-      // Probar conexión con timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       
@@ -45,11 +44,9 @@ class HttpManager {
         console.log(`✅ HTTP conectado a ${this.baseUrl}`);
         this.callbacks.onConnect.forEach(cb => cb());
         
-        // Obtener estado inicial
         const data = await response.json();
         this.callbacks.onMessage.forEach(cb => cb(data));
         
-        // Iniciar polling
         this.startPolling();
         return true;
       }
@@ -89,7 +86,7 @@ class HttpManager {
         this.disconnect();
         this.handleReconnect();
       }
-    }, 3000); // Cada 3 segundos
+    }, 3000);
   }
 
   handleReconnect() {
@@ -136,7 +133,6 @@ class HttpManager {
         const result = await response.json();
         console.log('✅ LED actualizado:', result);
         
-        // Notificar cambio inmediatamente
         if (result.success) {
           this.callbacks.onMessage.forEach(cb => cb(result));
         }
@@ -150,13 +146,13 @@ class HttpManager {
     }
   }
 
-  // NUEVA FUNCIÓN: Cambiar IP en el ESP32
+  // Función para cambiar IP en el ESP32
   async changeIPOnDevice(newIP) {
     try {
       console.log(`🌐 Enviando comando cambio IP: ${this.ip} → ${newIP}`);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // Más tiempo para cambio IP
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
       
       const response = await fetch(`${this.baseUrl}/api/config`, {
         method: 'POST',
@@ -174,23 +170,19 @@ class HttpManager {
         console.log('✅ Comando IP enviado:', result);
         
         if (result.success) {
-          // Desconectar inmediatamente
           this.disconnect();
           
-          // Actualizar IP local
           this.ip = newIP;
           this.baseUrl = `http://${newIP}:${this.port}`;
           
-          // Notificar que la IP cambió
           this.callbacks.onIPChanged.forEach(cb => cb(newIP));
           
           console.log(`🔄 Esperando reinicio del ESP32... Nueva URL: ${this.baseUrl}`);
           
-          // Intentar reconectar después de un tiempo
           setTimeout(() => {
             console.log('🔄 Intentando reconectar con nueva IP...');
             this.connect();
-          }, 5000); // Esperar 5 segundos
+          }, 5000);
           
           return result;
         }
@@ -208,9 +200,8 @@ class HttpManager {
   onDisconnect(callback) { this.callbacks.onDisconnect.push(callback); }
   onMessage(callback) { this.callbacks.onMessage.push(callback); }
   onError(callback) { this.callbacks.onError.push(callback); }
-  onIPChanged(callback) { this.callbacks.onIPChanged.push(callback); } // NUEVO
+  onIPChanged(callback) { this.callbacks.onIPChanged.push(callback); }
 
-  // Cambiar IP localmente (sin enviar comando)
   changeIP(newIP) {
     this.ip = newIP;
     this.baseUrl = `http://${newIP}:${this.port}`;
@@ -219,23 +210,24 @@ class HttpManager {
 }
 
 function MapeoDispositivos() {
-  const [espIP, setEspIP] = useState('192.168.1.101');
+  const [currentIP, setCurrentIP] = useState('192.168.1.101'); // IP ACTUAL del ESP32
+  const [newIP, setNewIP] = useState('192.168.1.101'); // IP DESEADA (input)
   const [ledIntensity, setLedIntensity] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
   const [deviceData, setDeviceData] = useState({});
   const [status, setStatus] = useState('Desconectado');
   const [loading, setLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
-  const [changingIP, setChangingIP] = useState(false); // NUEVO: Estado cambio IP
-  const [ipChangeStatus, setIpChangeStatus] = useState(''); // NUEVO: Status cambio IP
+  const [changingIP, setChangingIP] = useState(false);
+  const [ipChangeStatus, setIpChangeStatus] = useState('');
   
   // Managers
   const [httpManager, setHttpManager] = useState(null);
   const [firestoreManager] = useState(new FirestoreManager());
 
   useEffect(() => {
-    // Inicializar HTTP Manager
-    const http = new HttpManager(espIP);
+    // Inicializar HTTP Manager con la IP ACTUAL
+    const http = new HttpManager(currentIP);
     
     // Configurar callbacks
     http.onConnect(() => {
@@ -261,7 +253,6 @@ function MapeoDispositivos() {
         setLedIntensity(data.ledIntensity);
       }
       
-      // Guardar en Firebase automáticamente
       if (data.type === 'sensorData' || data.deviceId) {
         firestoreManager.savePosteData('POSTE_001', data);
       }
@@ -273,11 +264,12 @@ function MapeoDispositivos() {
       console.error('❌ Error HTTP:', error);
     });
 
-    // NUEVO: Callback para cambio de IP
-    http.onIPChanged((newIP) => {
-      console.log(`🌐 IP cambiada exitosamente a: ${newIP}`);
-      setEspIP(newIP);
-      setIpChangeStatus(`✅ IP cambiada a ${newIP} - Reconectando...`);
+    // Callback para cambio de IP exitoso
+    http.onIPChanged((changedIP) => {
+      console.log(`🌐 IP cambiada exitosamente a: ${changedIP}`);
+      setCurrentIP(changedIP); // Actualizar IP actual
+      setNewIP(changedIP); // Sincronizar input
+      setIpChangeStatus(`✅ IP cambiada a ${changedIP} - Reconectando...`);
     });
     
     setHttpManager(http);
@@ -294,8 +286,157 @@ function MapeoDispositivos() {
       unsubscribe();
       firestoreManager.stopAllListeners();
     };
-  }, [espIP]);
+  }, [currentIP]); // Cambiar dependencia a currentIP
+// Agregar al componente MapeoDispositivos después de useEffect
 
+// Función para detectar IP actual del ESP32
+// Función para detectar IP actual del ESP32 - VERSIÓN OPTIMIZADA
+const detectESP32IP = async () => {
+  setLoading(true);
+  setStatus('🔍 Detectando IP del ESP32...');
+  
+  // Configuración del rango de IPs a probar
+  const baseIP = '192.168.1.'; // Base de la red
+  const startRange = 100;      // IP inicial: 192.168.1.100
+  const endRange = 200;        // IP final: 192.168.1.200
+  const timeoutMs = 1500;      // Timeout por IP (1.5 segundos)
+  const maxConcurrent = 10;    // Máximo de pruebas simultáneas
+  
+  console.log(`🔍 Buscando ESP32 en rango ${baseIP}${startRange}-${endRange}...`);
+  
+  // Función para probar una IP específica
+  const testSingleIP = async (ipNumber) => {
+    const testIP = baseIP + ipNumber;
+    
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      
+      const response = await fetch(`http://${testIP}/api/status`, {
+        signal: controller.signal,
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Verificar que es nuestro ESP32
+        if (data.deviceId === 'POSTE_001' || 
+            data.type === 'sensorData' || 
+            data.ip || 
+            data.ledIntensity !== undefined) {
+          
+          console.log(`✅ ESP32 encontrado en ${testIP}!`, data);
+          return { ip: testIP, data };
+        }
+      }
+    } catch (error) {
+      // Ignorar errores silenciosamente
+    }
+    
+    return null;
+  };
+  
+  // Función para procesar IPs en lotes (para no saturar la red)
+  const processInBatches = async () => {
+    for (let start = startRange; start <= endRange; start += maxConcurrent) {
+      const end = Math.min(start + maxConcurrent - 1, endRange);
+      const currentBatch = [];
+      
+      // Crear promesas para el lote actual
+      for (let i = start; i <= end; i++) {
+        currentBatch.push(testSingleIP(i));
+      }
+      
+      console.log(`🧪 Probando lote: ${baseIP}${start}-${end}...`);
+      setStatus(`🔍 Probando IPs ${baseIP}${start}-${end}...`);
+      
+      // Ejecutar lote en paralelo
+      const results = await Promise.allSettled(currentBatch);
+      
+      // Verificar si alguna IP del lote funcionó
+      for (const result of results) {
+        if (result.status === 'fulfilled' && result.value) {
+          const { ip, data } = result.value;
+          
+          console.log(`🎉 ESP32 detectado en ${ip}!`);
+          
+          // Actualizar IPs
+          setCurrentIP(ip);
+          setNewIP(ip);
+          setStatus(`✅ ESP32 detectado en ${ip}`);
+          setLoading(false);
+          
+          // Conectar automáticamente
+          setTimeout(() => {
+            connectHttp();
+          }, 1000);
+          
+          return ip;
+        }
+      }
+      
+      // Pequeña pausa entre lotes para no saturar
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    return null;
+  };
+  
+  // Ejecutar detección
+  const foundIP = await processInBatches();
+  
+  if (!foundIP) {
+    // No encontrado en todo el rango
+    setStatus(`❌ ESP32 no encontrado en rango ${baseIP}${startRange}-${endRange}`);
+    setLoading(false);
+    
+    alert(
+      `❌ ESP32 no encontrado en el rango ${baseIP}${startRange}-${endRange}\n\n` +
+      `Verifica que:\n` +
+      `• El ESP32 esté encendido\n` +
+      `• Esté conectado a la misma red WiFi\n` +
+      `• Su IP esté en el rango configurado\n\n` +
+      `¿Quieres probar una IP específica manualmente?`
+    );
+    
+    // Opción manual como fallback
+    const userIP = prompt(
+      'Introduce la IP del ESP32 manualmente:',
+      currentIP
+    );
+    
+    if (userIP && userIP.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
+      setCurrentIP(userIP);
+      setNewIP(userIP);
+      setTimeout(() => connectHttp(), 500);
+    }
+  }
+  
+  return foundIP;
+};
+
+// Función mejorada para conectar con detección automática
+const connectWithDetection = async () => {
+  const detectedIP = await detectESP32IP();
+  if (!detectedIP) {
+    // Si no se detecta, preguntar al usuario
+    const userIP = prompt(
+      'No se pudo detectar automáticamente el ESP32.\n\n' +
+      '¿Cuál es la IP actual del ESP32?',
+      currentIP
+    );
+    
+    if (userIP && userIP.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
+      setCurrentIP(userIP);
+      setNewIP(userIP);
+      setTimeout(() => connectHttp(), 500);
+    }
+  }
+};
   // Conectar HTTP
   const connectHttp = async () => {
     if (httpManager) {
@@ -311,16 +452,15 @@ function MapeoDispositivos() {
     
     if (httpManager && await httpManager.setLED(newIntensity)) {
       setLedIntensity(newIntensity);
-      // Actualizar también en Firebase
       firestoreManager.updateLEDIntensity('POSTE_001', newIntensity);
     } else {
       console.warn('⚠️ No se pudo enviar comando');
     }
   };
 
-  // NUEVA FUNCIÓN: Cambiar IP con comando al ESP32
+  // FUNCIÓN CORREGIDA: Cambiar IP en ESP32
   const changeIPOnESP32 = async () => {
-    if (!espIP.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
+    if (!newIP.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
       alert('⚠️ Formato de IP inválido');
       return;
     }
@@ -330,9 +470,15 @@ function MapeoDispositivos() {
       return;
     }
 
-    // Confirmar cambio
+    if (currentIP === newIP) {
+      alert('ℹ️ La IP nueva es igual a la actual');
+      return;
+    }
+
     const confirm = window.confirm(
-      `¿Cambiar IP del ESP32 de ${httpManager.ip} a ${espIP}?\n\n` +
+      `¿Cambiar IP del ESP32?\n\n` +
+      `IP Actual: ${currentIP}\n` +
+      `IP Nueva: ${newIP}\n\n` +
       `El dispositivo se reiniciará y puede tardar unos segundos en estar disponible.`
     );
 
@@ -343,14 +489,16 @@ function MapeoDispositivos() {
       setIpChangeStatus('🔄 Enviando comando al ESP32...');
       setStatus('🌐 Cambiando IP...');
 
-      // Enviar comando al ESP32
-      const result = await httpManager.changeIPOnDevice(espIP);
+      console.log(`🌐 Enviando comando desde ${currentIP} para cambiar a ${newIP}`);
+
+      // CLAVE: Enviar comando a la IP ACTUAL, no a la nueva
+      const result = await httpManager.changeIPOnDevice(newIP);
       
       console.log('🎉 Resultado cambio IP:', result);
       
       // Actualizar Firebase
       firestoreManager.updateNetworkConfig('POSTE_001', {
-        ip: espIP,
+        ip: newIP,
         puerto: 80,
         timeout: 5000
       });
@@ -367,24 +515,19 @@ function MapeoDispositivos() {
 
   // Guardar nueva IP (solo local, sin enviar comando)
   const saveNewIP = () => {
-    if (!espIP.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
+    if (!newIP.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/)) {
       alert('⚠️ Formato de IP inválido');
       return;
     }
 
-    if (httpManager) {
-      // Solo actualizar Firebase (sin enviar comando)
-      firestoreManager.updateNetworkConfig('POSTE_001', {
-        ip: espIP,
-        puerto: 80,
-        timeout: 5000
-      });
-      
-      // Cambiar IP local en el manager
-      httpManager.changeIP(espIP);
-      
-      console.log(`📝 IP local actualizada a: ${espIP}`);
-    }
+    firestoreManager.updateNetworkConfig('POSTE_001', {
+      ip: newIP,
+      puerto: 80,
+      timeout: 5000
+    });
+    
+    console.log(`📝 IP deseada guardada: ${newIP} (no enviada al ESP32)`);
+    alert(`📝 IP guardada localmente: ${newIP}\n\nPara aplicar al ESP32, usa "Cambiar IP en ESP32"`);
   };
 
   // Funciones de control rápido
@@ -409,7 +552,6 @@ function MapeoDispositivos() {
             Última actualización: {lastUpdate.toLocaleTimeString()}
           </div>
         )}
-        {/* NUEVO: Status cambio IP */}
         {ipChangeStatus && (
           <div style={styles.ipChangeStatus}>
             {ipChangeStatus}
@@ -417,18 +559,30 @@ function MapeoDispositivos() {
         )}
       </div>
 
-      {/* Configuración IP ACTUALIZADA */}
+      {/* Configuración IP CORREGIDA */}
       <div style={styles.section}>
         <h3 style={styles.sectionTitle}>🌐 Configuración de Red</h3>
+        
         <div style={styles.inputGroup}>
-          <label style={styles.label}>Dirección IP del ESP32:</label>
+          <label style={styles.label}>IP Actual del ESP32:</label>
           <input
             type="text"
-            value={espIP}
-            onChange={(e) => setEspIP(e.target.value)}
-            placeholder="192.168.1.101"
+            value={currentIP}
+            readOnly
+            style={{...styles.input, backgroundColor: '#e9ecef'}}
+          />
+          <span style={styles.currentIPLabel}>🔗 Conectado aquí</span>
+        </div>
+        
+        <div style={styles.inputGroup}>
+          <label style={styles.label}>Nueva IP deseada:</label>
+          <input
+            type="text"
+            value={newIP}
+            onChange={(e) => setNewIP(e.target.value)}
+            placeholder="192.168.1.150"
             style={styles.input}
-            disabled={changingIP} // Deshabilitar durante cambio
+            disabled={changingIP}
           />
           <button 
             onClick={saveNewIP} 
@@ -438,8 +592,33 @@ function MapeoDispositivos() {
             💾 Guardar IP Local
           </button>
         </div>
-        
-        {/* NUEVO: Botón específico para cambiar IP en ESP32 */}
+        <div style={styles.ipChangeGroup}>
+  <button 
+    onClick={detectESP32IP}
+    disabled={loading || changingIP}
+    style={{
+      ...styles.detectButton,
+      opacity: (loading || changingIP) ? 0.6 : 1
+    }}
+  >
+    {loading ? '🔍 Detectando...' : '🔍 Detectar IP del ESP32'}
+  </button>
+  <small style={styles.ipChangeHelp}>
+    🔍 Busca automáticamente el ESP32 en IPs comunes
+  </small>
+</div>
+
+<button 
+  onClick={connectWithDetection}
+  disabled={loading || changingIP}
+  style={{
+    ...styles.connectButton,
+    opacity: (loading || changingIP) ? 0.6 : 1
+  }}
+>
+  {loading ? '🔄 Conectando...' : '🔌 Detectar y Conectar ESP32'}
+</button>
+        {/* Botón específico para cambiar IP en ESP32 */}
         <div style={styles.ipChangeGroup}>
           <button 
             onClick={changeIPOnESP32}
@@ -468,8 +647,13 @@ function MapeoDispositivos() {
         </button>
         
         <div style={styles.urlInfo}>
-          <strong>URL:</strong> http://{espIP}:80 | 
-          <strong> API:</strong> http://{espIP}:80/api/status
+          <strong>URL Actual:</strong> http://{currentIP}:80 | 
+          <strong> API:</strong> http://{currentIP}:80/api/status
+          {newIP !== currentIP && (
+            <div style={styles.newIPInfo}>
+              <strong>Nueva URL:</strong> http://{newIP}:80 (después del cambio)
+            </div>
+          )}
         </div>
       </div>
 
@@ -592,7 +776,7 @@ function MapeoDispositivos() {
        <h3 style={styles.sectionTitle}>🧪 Panel de Pruebas</h3>
        <div style={styles.testPanel}>
          <button 
-           onClick={() => window.open(`http://${espIP}`, '_blank')}
+           onClick={() => window.open(`http://${currentIP}`, '_blank')}
            style={styles.testButton}
            disabled={!isConnected || changingIP}
          >
@@ -600,7 +784,7 @@ function MapeoDispositivos() {
          </button>
          <button 
            onClick={() => {
-             fetch(`http://${espIP}/api/status`)
+             fetch(`http://${currentIP}/api/status`)
                .then(res => res.json())
                .then(data => {
                  console.log('Test API Response:', data);
@@ -649,7 +833,7 @@ function MapeoDispositivos() {
  );
 }
 
-// Estilos actualizados con nuevos elementos
+// Estilos completos
 const styles = {
  container: {
    padding: '20px',
@@ -680,7 +864,6 @@ const styles = {
    color: '#6c757d',
    fontStyle: 'italic'
  },
- // NUEVO: Estilo para status de cambio IP
  ipChangeStatus: {
    fontSize: '14px',
    color: '#856404',
@@ -715,12 +898,21 @@ const styles = {
    marginBottom: '15px',
    flexWrap: 'wrap'
  },
- // NUEVO: Grupo específico para cambio de IP
  ipChangeGroup: {
    marginBottom: '15px',
    textAlign: 'center'
  },
- // NUEVO: Botón específico para cambio de IP
+ detectButton: {
+  padding: '10px 20px',
+  backgroundColor: '#6f42c1',
+  color: 'white',
+  border: 'none',
+  borderRadius: '5px',
+  cursor: 'pointer',
+  fontSize: '14px',
+  fontWeight: 'bold',
+  marginBottom: '10px'
+},
  changeIPButton: {
    padding: '12px 24px',
    backgroundColor: '#fd7e14',
@@ -732,11 +924,22 @@ const styles = {
    fontWeight: 'bold',
    marginBottom: '5px'
  },
- // NUEVO: Texto de ayuda para cambio de IP
  ipChangeHelp: {
    display: 'block',
    fontSize: '12px',
    color: '#6c757d',
+   fontStyle: 'italic'
+ },
+ currentIPLabel: {
+   fontSize: '12px',
+   color: '#28a745',
+   fontWeight: 'bold',
+   marginLeft: '10px'
+ },
+ newIPInfo: {
+   fontSize: '11px',
+   color: '#fd7e14',
+   marginTop: '5px',
    fontStyle: 'italic'
  },
  label: {
@@ -835,29 +1038,29 @@ const styles = {
    border: '1px solid #e9ecef'
  },
  sensorsGrid: {
-   backgroundColor: '#e8f4f8',
-   padding: '15px',
-   borderRadius: '8px',
-   border: '1px solid #bee5eb'
- },
- sensorsTitle: {
-   margin: '0 0 10px 0',
-   color: '#0c5460'
- },
- sensorItem: {
-   display: 'inline-block',
-   margin: '5px 15px 5px 0',
-   fontSize: '14px'
- },
- testPanel: {
-   display: 'flex',
-   gap: '10px',
-   flexWrap: 'wrap',
-   justifyContent: 'center'
- },
- testButton: {
-   padding: '10px 15px',
-   backgroundColor: '#17a2b8',
+  backgroundColor: '#e8f4f8',
+  padding: '15px',
+  borderRadius: '8px',
+  border: '1px solid #bee5eb'
+},
+sensorsTitle: {
+  margin: '0 0 10px 0',
+  color: '#0c5460'
+},
+sensorItem: {
+  display: 'inline-block',
+  margin: '5px 15px 5px 0',
+  fontSize: '14px'
+},
+testPanel: {
+  display: 'flex',
+  gap: '10px',
+  flexWrap: 'wrap',
+  justifyContent: 'center'
+},
+testButton: {
+  padding: '10px 15px',
+  backgroundColor: '#17a2b8',
   color: 'white',
   border: 'none',
   borderRadius: '5px',
