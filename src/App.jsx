@@ -13,6 +13,7 @@ import GestionUnidades from './components/GestionUnidades/GestionUnidades.jsx'
 import MapeoDispositivos from './components/MapeoDispositivos/MapeoDispositivos.jsx'
 import GestionUsuarios from './components/gestion-usuarios/gestion-usuarios.jsx';
 import Reportes from './components/reportes/reportes.jsx';
+import PerfilUsuario from './components/miPerfil/PerfilUsuario.jsx';
 
 // Layout
 import DashboardLayout from './components/barra-nav-lateral/Layout.jsx';
@@ -140,14 +141,16 @@ function App() {
       '/monitoreo', 
       '/gestion-unidades',
       '/mapeo-dispositivos',
-      '/reportes'
+      '/reportes',
+      '/perfil'
     ];
     
     const operadorRoutes = [
       '/monitoreo', 
       '/gestion-unidades',
       '/mapeo-dispositivos',
-      '/reportes'
+      '/reportes',
+      '/perfil'
     ];
     
     // Mapear roles de Firestore
@@ -225,7 +228,7 @@ function App() {
           borderRadius: '50%',
           animation: 'spin 1s linear infinite'
         }}></div>
-        <span>Inicializando Sistema de Alumbrado Público...</span>
+        <span>Inicializando SmartLight...</span>
         <style>{`
           @keyframes spin {
             0% { transform: rotate(0deg); }
@@ -297,6 +300,14 @@ function App() {
           element={
             <ProtectedRoute path="/reportes">
               <Reportes />
+            </ProtectedRoute>
+          } 
+        />
+         <Route 
+          path="/perfil" 
+          element={
+            <ProtectedRoute path="/perfil">
+              <PerfilUsuario />
             </ProtectedRoute>
           } 
         />

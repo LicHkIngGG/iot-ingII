@@ -127,6 +127,12 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
         label: 'Reportes', 
         icon: BarChart3,
         description: 'Consumo y eficiencia'
+      },
+      { 
+        path: '/perfil', 
+        label: 'Mi Perfil', 
+        icon: Users,
+        description: 'Perfil de Usuario'
       }
     ],
     operador: [
@@ -153,6 +159,12 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
         label: 'Reportes', 
         icon: BarChart3,
         description: 'Reportes operacionales'
+      },
+      { 
+        path: '/perfil', 
+        label: 'Mi Perfil', 
+        icon: Users,
+        description: 'Perfil de Usuario'
       }
     ],
     // Compatibilidad con roles antiguos
@@ -275,7 +287,7 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
               <Lightbulb className="logo-light" />
             </div>
             <div className="logo-text">
-              <p>ALUMBRADO INTELIGENTE</p>
+              <p>SMART LIGHT</p>
               <span className="user-role">
                 {getRoleDisplayName(userRole)}
               </span>
