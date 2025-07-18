@@ -83,7 +83,7 @@ const PerfilUsuario = () => {
 
         setUsuarioData(completeUserData);
         setFormData({
-          nombres: userData.nombre || '',
+          nombres: userData.nombres || '',
           apellidoPaterno: userData.apellidoPaterno || '',
           apellidoMaterno: userData.apellidoMaterno || '',
           celular: userData.celular || '',
@@ -150,7 +150,7 @@ const PerfilUsuario = () => {
     setSaving(true);
     try {
       const datosActualizados = {
-        nombres: formData.nombre.trim(),
+        nombres: formData.nombres.trim(),
         apellidoPaterno: formData.apellidoPaterno.trim(),
         apellidoMaterno: formData.apellidoMaterno.trim(),
         celular: formData.celular.trim(),
@@ -181,7 +181,7 @@ const PerfilUsuario = () => {
   const handleCancelar = () => {
     // Restaurar datos originales
     setFormData({
-      nombres: usuarioData.nombre || '',
+      nombres: usuarioData.nombres || '',
       apellidoPaterno: usuarioData.apellidoPaterno || '',
       apellidoMaterno: usuarioData.apellidoMaterno || '',
       celular: usuarioData.celular || '',
@@ -296,7 +296,7 @@ const PerfilUsuario = () => {
             <i className="fa fa-user-circle"></i>
           </div>
           <div className="user-info">
-            <h1>{`${usuarioData.nombre} ${usuarioData.apellidoPaterno} ${usuarioData.apellidoMaterno || ''}`}</h1>
+            <h1>{`${usuarioData.nombres} ${usuarioData.apellidoPaterno} ${usuarioData.apellidoMaterno || ''}`}</h1>
             <p className="user-role">
               {usuarioData.role === 'admin' ? 'Administrador' : 'Recepcionista'}
             </p>
@@ -352,12 +352,12 @@ const PerfilUsuario = () => {
                   <input
                     type="text"
                     name="nombres"
-                    value={formData.nombre}
+                    value={formData.nombres}
                     onChange={handleInputChange}
                     disabled={saving}
                   />
                 ) : (
-                  <p className="form-value">{usuarioData.nombre}</p>
+                  <p className="form-value">{usuarioData.nombres}</p>
                 )}
               </div>
 

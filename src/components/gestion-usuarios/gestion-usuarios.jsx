@@ -7,69 +7,103 @@ import {
   doc,
   onSnapshot,
   query,
-  where,
-  deleteDoc
+  where
 } from 'firebase/firestore';
 import {
   getAuth,
   createUserWithEmailAndPassword,
+  updatePassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
   signOut
 } from 'firebase/auth';
 import { db } from '../../utils/firebase';
-import { registrarAccionAdmin } from '../../utils/logUtils';
-import { 
-  Users, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Eye, 
-  EyeOff, 
-  Key,
-  Shield,
-  AlertCircle,
-  CheckCircle,
-  Copy,
-  X,
-  Search,
-  UserPlus,
-  Settings
-} from 'lucide-react';
+import GestionAdmTabla from './gestion-adm-tabla';
 import './gestion-usuarios.css';
 
 const GestionUsuarios = () => {
   // Estados para manejo de formularios y datos
   const [formData, setFormData] = useState({
-    nombre: '',
-    email: '',
-    rol: 'operador',
-    activo: true
+    nombres: '',
+    apellidoPaterno: '',
+    apellidoMaterno: '',
+    ci: '',
+    genero: 'masculino',
+    celular: '',
+    correoPersonal: '',
+    role: 'receptionist',
   });
   
   // Estados de la aplicación
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [usuarioActual, setUsuarioActual] = useState(null);
+  const [modalCambioClave, setModalCambioClave] = useState(false);
+  const [nuevaClave, setNuevaClave] = useState('');
+  const [confirmarClave, setConfirmarClave] = useState('');
   const [showNewUserModal, setShowNewUserModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [nuevoUsuario, setNuevoUsuario] = useState(null);
-  const [nuevaPassword, setNuevaPassword] = useState('');
-  const [loadingAction, setLoadingAction] = useState(false);
   const [notificacion, setNotificacion] = useState({ 
     visible: false, 
     mensaje: '', 
     tipo: '' 
   });
-  
+  const [nuevoUsuario, setNuevoUsuario] = useState(null);
+  const [activeTab, setActiveTab] = useState('registro');
+  const [enviandoEmail, setEnviandoEmail] = useState(false);
+
   // Configuraciones de autenticación
   const auth = getAuth();
+  const DOMAIN = 'vseguro.com';
 
-  // Efecto para obtener usuarios en tiempo real
+  // 🔧 FIX 1: Modificar el efecto de autenticación para evitar modal automático
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Buscar información del usuario en Firestore
+        const usuarioRef = query(
+          collection(db, 'usuarios'), 
+          where('uid', '==', user.uid)
+        );
+        
+        const querySnapshot = await getDocs(usuarioRef);
+        
+        if (!querySnapshot.empty) {
+          const usuarioData = querySnapshot.docs[0].data();
+          
+          // 🔧 CAMBIO CRÍTICO: Solo mostrar modal si es el primer login del usuario ACTUAL
+          // y no estamos en proceso de crear un nuevo usuario
+          if (usuarioData.requiereCambioPassword && !showNewUserModal) {
+            // Verificar si realmente es el primer login de este usuario específico
+            // mediante una verificación adicional del tiempo de creación
+            const tiempoCreacion = new Date(usuarioData.fechaCreacion).getTime();
+            const tiempoActual = new Date().getTime();
+            const diferenciaTiempo = tiempoActual - tiempoCreacion;
+            
+            // Solo mostrar modal si han pasado al menos 30 segundos desde la creación
+            // esto evita que aparezca inmediatamente después de crear el usuario
+            if (diferenciaTiempo > 30000) {
+              setModalCambioClave(true);
+              setUsuarioActual({
+                ...usuarioData,
+                docId: querySnapshot.docs[0].id
+              });
+            } else {
+              setUsuarioActual(usuarioData);
+            }
+          } else {
+            setUsuarioActual(usuarioData);
+          }
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [auth, showNewUserModal]);
+
+  // Efecto para obtener usuarios
   useEffect(() => {
     const obtenerUsuarios = async () => {
       try {
-        setLoading(true);
         const usuariosRef = collection(db, 'usuarios');
         const unsubscribe = onSnapshot(usuariosRef, (snapshot) => {
           const usuariosActualizados = snapshot.docs.map(doc => ({
@@ -77,14 +111,12 @@ const GestionUsuarios = () => {
             ...doc.data()
           }));
           setUsuarios(usuariosActualizados);
-          setLoading(false);
         });
 
         return () => unsubscribe();
       } catch (error) {
         console.error('Error al obtener usuarios:', error);
-        mostrarNotificacion('Error al cargar usuarios', 'error');
-        setLoading(false);
+        mostrarNotificacion('Error al cargar administradores', 'error');
       }
     };
 
@@ -101,21 +133,82 @@ const GestionUsuarios = () => {
     
     setTimeout(() => {
       setNotificacion(prev => ({ ...prev, visible: false }));
-    }, 4000);
+    }, 3000);
+  };
+
+  // Función para manejar cambio de contraseña
+  const handleCambioClave = async (e) => {
+    e.preventDefault();
+    
+    if (nuevaClave !== confirmarClave) {
+      mostrarNotificacion('Las contraseñas no coinciden', 'error');
+      return;
+    }
+    
+    if (nuevaClave.length < 8) {
+      mostrarNotificacion('La contraseña debe tener al menos 8 caracteres', 'warning');
+      return;
+    }
+    
+    const regexMayuscula = /[A-Z]/;
+    const regexMinuscula = /[a-z]/;
+    const regexNumero = /[0-9]/;
+    const regexEspecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/;
+    
+    if (!regexMayuscula.test(nuevaClave) || 
+        !regexMinuscula.test(nuevaClave) || 
+        !regexNumero.test(nuevaClave) || 
+        !regexEspecial.test(nuevaClave)) {
+      mostrarNotificacion('La contraseña debe incluir mayúsculas, minúsculas, números y caracteres especiales', 'warning');
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      const user = auth.currentUser;
+      await updatePassword(user, nuevaClave);
+      
+      await updateDoc(doc(db, 'usuarios', usuarioActual.docId), {
+        requiereCambioPassword: false,
+        fechaCambioClave: new Date().toISOString()
+      });
+      
+      setModalCambioClave(false);
+      setNuevaClave('');
+      setConfirmarClave('');
+      
+      mostrarNotificacion('Contraseña cambiada exitosamente', 'success');
+    } catch (error) {
+      console.error('Error al cambiar contraseña:', error);
+      mostrarNotificacion('Error al cambiar contraseña', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Generar correo electrónico basado en nombres
+  const generarCorreo = (nombres, apellidoPaterno, apellidoMaterno) => {
+    if (!nombres || !apellidoPaterno) return '';
+    
+    const primeraLetraNombre = nombres.trim().charAt(0).toLowerCase();
+    const apellidoPaternoLower = apellidoPaterno.trim().toLowerCase();
+    const primeraLetraMaterno = apellidoMaterno ? apellidoMaterno.trim().charAt(0).toLowerCase() : '';
+    
+    return `${primeraLetraNombre}${apellidoPaternoLower}${primeraLetraMaterno}@${DOMAIN}`;
   };
 
   // Generar contraseña aleatoria segura
-  const generarContraseña = (longitud = 12) => {
-    const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+  const generarContraseña = (longitud = 10) => {
+    const caracteres = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+';
+    const caracteresEspeciales = '!@#$%^&*()_+';
     let contraseña = '';
     
-    // Asegurar complejidad
-    contraseña += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[Math.floor(Math.random() * 26)]; // Mayúscula
-    contraseña += 'abcdefghijklmnopqrstuvwxyz'[Math.floor(Math.random() * 26)]; // Minúscula
-    contraseña += '0123456789'[Math.floor(Math.random() * 10)]; // Número
-    contraseña += '!@#$%^&*'[Math.floor(Math.random() * 8)]; // Especial
+    contraseña += caracteres.charAt(Math.floor(Math.random() * 26));
+    contraseña += caracteres.charAt(26 + Math.floor(Math.random() * 26));
+    contraseña += caracteres.charAt(52 + Math.floor(Math.random() * 10));
+    contraseña += caracteresEspeciales.charAt(Math.floor(Math.random() * caracteresEspeciales.length));
     
-    // Completar el resto
     for (let i = 4; i < longitud; i++) {
       contraseña += caracteres.charAt(Math.floor(Math.random() * caracteres.length));
     }
@@ -123,803 +216,676 @@ const GestionUsuarios = () => {
     return contraseña.split('').sort(() => 0.5 - Math.random()).join('');
   };
 
-  // Verificar si el email ya existe
-  const verificarEmailExistente = async (email, excludeId = null) => {
+  // Verificar si el correo ya existe
+  const verificarCorreoExistente = async (email) => {
     try {
       const q = query(collection(db, 'usuarios'), where('email', '==', email));
       const querySnapshot = await getDocs(q);
-      
-      if (excludeId) {
-        return querySnapshot.docs.some(doc => doc.id !== excludeId);
-      }
-      
       return !querySnapshot.empty;
     } catch (error) {
-      console.error('Error al verificar email:', error);
+      console.error('Error al verificar correo:', error);
       return true;
     }
   };
 
-  // Manejar cambios en inputs
-  const handleInputChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({ 
-      ...formData, 
-      [name]: type === 'checkbox' ? checked : value 
-    });
-  };
-
-  // Crear nuevo usuario
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!formData.nombre || !formData.email) {
-      mostrarNotificacion('Por favor, complete todos los campos obligatorios', 'error');
-      return;
-    }
-    
-    // Validar formato de email
+  // Validar correo personal
+  const validarCorreoPersonal = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      mostrarNotificacion('El formato del email no es válido', 'error');
+    return emailRegex.test(email);
+  };
+
+  // 🔧 FIX 2: Función mejorada para envío de emails
+  // 🔧 FUNCIÓN enviarEmailCredenciales CORREGIDA CON DEBUG
+// Reemplaza la función enviarEmailCredenciales en tu GestionUsuarios.jsx (líneas 188-225)
+
+const enviarEmailCredenciales = async (usuarioData, password) => {
+  console.log('📧 ========================================');
+  console.log('📧 INICIANDO ENVÍO DE EMAIL');
+  console.log('📧 ========================================');
+  
+  setEnviandoEmail(true);
+  
+  try {
+    console.log('📧 Datos del usuario para email:', usuarioData);
+    console.log('📮 Correo destino:', usuarioData.correoPersonal);
+    console.log('👤 Nombre completo:', `${usuarioData.nombres} ${usuarioData.apellidoPaterno} ${usuarioData.apellidoMaterno || ''}`.trim());
+    console.log('📧 Email corporativo:', usuarioData.email);
+    console.log('🔑 Contraseña temporal:', password);
+    console.log('🎭 Tipo de usuario:', usuarioData.role === 'admin' ? 'Administrador' : 'Recepcionista');
+    
+    // Preparar payload para el backend
+    const payload = {
+      destinatario: usuarioData.correoPersonal,
+      nombreCompleto: `${usuarioData.nombres} ${usuarioData.apellidoPaterno} ${usuarioData.apellidoMaterno || ''}`.trim(),
+      emailCorporativo: usuarioData.email,
+      passwordTemporal: password,
+      tipo: usuarioData.role === 'admin' ? 'Administrador' : 'Recepcionista'
+    };
+    
+    console.log('📦 Payload para backend:', payload);
+    console.log('🌐 URL del backend: http://localhost:5000/api/enviar-credenciales');
+    
+    // Realizar petición al backend
+    console.log('🚀 Enviando petición HTTP...');
+    
+    const response = await fetch('http://localhost:5000/api/enviar-credenciales', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    
+    console.log('📡 Respuesta recibida:');
+    console.log('   Status:', response.status);
+    console.log('   Status Text:', response.statusText);
+    console.log('   Headers:', Object.fromEntries(response.headers));
+
+    if (response.ok) {
+      const result = await response.json();
+      console.log('✅ Respuesta exitosa del backend:', result);
+      console.log('📧 Message ID:', result.data?.messageId);
+      console.log('📮 Destinatario confirmado:', result.data?.destinatario);
+      console.log('⏰ Timestamp:', result.data?.timestamp);
+      
+      mostrarNotificacion('Credenciales enviadas al correo personal exitosamente', 'success');
+      
+      console.log('✅ ========================================');
+      console.log('✅ EMAIL ENVIADO EXITOSAMENTE');
+      console.log('✅ ========================================');
+      
+      return true;
+    } else {
+      console.error('❌ Error en la respuesta del servidor:');
+      console.error('   Status:', response.status);
+      console.error('   Status Text:', response.statusText);
+      
+      let errorData;
+      try {
+        errorData = await response.json();
+        console.error('   Error data:', errorData);
+      } catch (parseError) {
+        console.error('   No se pudo parsear error data:', parseError);
+        const textResponse = await response.text();
+        console.error('   Respuesta como texto:', textResponse);
+      }
+      
+      throw new Error(errorData?.message || `Error del servidor: ${response.status} ${response.statusText}`);
+    }
+  } catch (error) {
+    console.error('❌ ========================================');
+    console.error('❌ ERROR AL ENVIAR EMAIL');
+    console.error('❌ ========================================');
+    console.error('❌ Error completo:', error);
+    console.error('❌ Tipo de error:', error.name);
+    console.error('❌ Mensaje:', error.message);
+    
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      console.error('🔍 DIAGNÓSTICO: Error de conexión');
+      console.error('   • Verificar que el backend esté ejecutándose en puerto 5000');
+      console.error('   • Comprobar la URL: http://localhost:5000/api/enviar-credenciales');
+      console.error('   • Revisar configuración CORS en el backend');
+      mostrarNotificacion('No se pudo conectar con el servidor de correo. Verifique que el backend esté ejecutándose.', 'warning');
+    } else if (error.message.includes('CORS')) {
+      console.error('🔍 DIAGNÓSTICO: Error de CORS');
+      console.error('   • Verificar configuración CORS en server.js');
+      console.error('   • Asegurar que el puerto 5173 esté permitido');
+      mostrarNotificacion('Error de CORS. Verificar configuración del servidor.', 'warning');
+    } else if (error.message.includes('500')) {
+      console.error('🔍 DIAGNÓSTICO: Error interno del servidor');
+      console.error('   • Verificar configuración de email en el backend (.env)');
+      console.error('   • Revisar logs del backend para más detalles');
+      mostrarNotificacion('Error interno del servidor de correo. Verificar configuración de email.', 'warning');
+    } else {
+      console.error('🔍 DIAGNÓSTICO: Error general');
+      mostrarNotificacion('Error al enviar credenciales por correo. Las credenciales se muestran en pantalla.', 'warning');
+    }
+    
+    console.error('❌ ========================================');
+    return false;
+  } finally {
+    setEnviandoEmail(false);
+    console.log('🏁 Proceso de envío de email finalizado');
+  }
+};
+
+  // Manejar cambios en inputs del formulario
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  // 🔧 FIX 3: Crear nuevo usuario con envío de email mejorado
+  // 🔧 FUNCIÓN handleSubmit CORREGIDA CON DEBUG
+// Reemplaza la función handleSubmit en tu GestionUsuarios.jsx (líneas 262-390)
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  console.log('🚀 Iniciando creación de usuario...');
+  console.log('📋 Datos del formulario:', formData);
+  
+  // Validaciones básicas
+  if (!formData.nombres || !formData.apellidoPaterno || !formData.ci || !formData.celular || !formData.correoPersonal) {
+    mostrarNotificacion('Por favor, complete todos los campos obligatorios', 'warning');
+    return;
+  }
+
+  // Validar correo personal
+  if (!validarCorreoPersonal(formData.correoPersonal)) {
+    mostrarNotificacion('El correo personal no tiene un formato válido', 'warning');
+    return;
+  }
+  
+  // Validar CI
+  if (!/^\d{5,10}$/.test(formData.ci)) {
+    mostrarNotificacion('El carnet debe contener entre 5 y 10 dígitos', 'warning');
+    return;
+  }
+  
+  // Validar celular
+  if (!/^\d{8}$/.test(formData.celular)) {
+    mostrarNotificacion('El número de celular debe contener 8 dígitos', 'warning');
+    return;
+  }
+  
+  setLoading(true);
+  
+  try {
+    // Generar correo electrónico
+    const email = generarCorreo(formData.nombres, formData.apellidoPaterno, formData.apellidoMaterno);
+    console.log('📧 Email corporativo generado:', email);
+    
+    // Verificar si el correo ya existe
+    const correoExistente = await verificarCorreoExistente(email);
+    if (correoExistente) {
+      mostrarNotificacion(`El correo ${email} ya está registrado en el sistema`, 'error');
+      setLoading(false);
       return;
     }
     
-    setLoadingAction(true);
+    // Generar contraseña aleatoria
+    const password = generarContraseña();
+    console.log('🔑 Contraseña temporal generada:', password);
     
-    try {
-      // Verificar si el email ya existe
-      const emailExiste = await verificarEmailExistente(formData.email);
-      if (emailExiste) {
-        mostrarNotificacion(`El email ${formData.email} ya está registrado`, 'error');
-        setLoadingAction(false);
-        return;
-      }
-      
-      // Generar contraseña temporal
-      const passwordTemporal = generarContraseña();
-      
-      // Crear usuario en Firebase Authentication
-      const userCredential = await createUserWithEmailAndPassword(
-        auth, 
-        formData.email, 
-        passwordTemporal
-      );
-      
-      // Datos del usuario para Firestore
-      const userData = {
-        nombre: formData.nombre.trim(),
-        email: formData.email.trim(),
-        rol: formData.rol,
-        activo: formData.activo,
-        uid: userCredential.user.uid,
-        requiereCambioPassword: true,
-        fechaCreacion: new Date().toISOString(),
-        fechaActualizacion: new Date().toISOString(),
-        accionesRealizadas: 0,
-        ultimoAcceso: null
-      };
-      
-      // Guardar en Firestore
-      const docRef = await addDoc(collection(db, 'usuarios'), userData);
-      
-      // Registrar acción
-      await registrarAccionAdmin(
-        'admin-temp',
-        'admin@sistema.com',
-        'Crear usuario',
-        `Usuario creado: ${formData.nombre} (${formData.email})`,
-        'Gestión de Usuarios',
-        'exitoso'
-      );
-      
-      // Preparar datos para mostrar
-      setNuevoUsuario({ 
-        ...userData, 
-        password: passwordTemporal, 
-        docId: docRef.id 
-      });
-      
-      // Resetear formulario
-      setFormData({
-        nombre: '',
-        email: '',
-        rol: 'operador',
-        activo: true
-      });
-      
-      setShowNewUserModal(false);
-      setShowPasswordModal(true);
-      
-      mostrarNotificacion('Usuario creado exitosamente', 'success');
-    } catch (error) {
-      console.error('Error al crear usuario:', error);
-      let mensajeError = 'Error al crear usuario';
-      
-      if (error.code === 'auth/email-already-in-use') {
-        mensajeError = 'Este email ya está en uso';
-      } else if (error.code === 'auth/invalid-email') {
-        mensajeError = 'El formato del email no es válido';
-      } else if (error.code === 'auth/weak-password') {
-        mensajeError = 'La contraseña es demasiado débil';
-      }
-      
-      mostrarNotificacion(mensajeError, 'error');
-    } finally {
-      setLoadingAction(false);
-    }
-  };
+    // 🔧 GUARDAR USUARIO ACTUAL PARA RESTAURAR SESIÓN
+    const currentUser = auth.currentUser;
+    console.log('👤 Usuario actual (admin):', currentUser?.email);
+    
+    // ===== CREAR USUARIO EN FIREBASE AUTH =====
+    console.log('🔐 Creando usuario en Firebase Auth...');
+    console.log('📧 Email:', email);
+    console.log('🔑 Password:', password);
+    
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    console.log('✅ Usuario creado en Firebase Auth');
+    console.log('🆔 UID generado:', userCredential.user.uid);
+    console.log('📧 Email confirmado en Auth:', userCredential.user.email);
+    
+    // ===== PREPARAR DATOS PARA FIRESTORE =====
+    const userData = {
+      nombres: formData.nombres.trim(),
+      apellidoPaterno: formData.apellidoPaterno.trim(),
+      apellidoMaterno: formData.apellidoMaterno?.trim() || '',
+      ci: formData.ci.trim(),
+      genero: formData.genero,
+      celular: formData.celular.trim(),
+      correoPersonal: formData.correoPersonal.trim().toLowerCase(),
+      email: email,
+      role: formData.role,
+      uid: userCredential.user.uid,
+      active: true,
+      requiereCambioPassword: true,
+      fechaCreacion: new Date().toISOString()
+    };
+    
+    console.log('💾 Datos para Firestore:', userData);
 
-  // Editar usuario
-  const handleEditUser = async (e) => {
-    e.preventDefault();
+    // ===== GUARDAR EN FIRESTORE =====
+    console.log('💾 Guardando en Firestore...');
+    const docRef = await addDoc(collection(db, 'usuarios'), userData);
+    console.log('✅ Guardado en Firestore con ID:', docRef.id);
     
-    if (!selectedUser) return;
+    // 🔧 CERRAR SESIÓN DEL NUEVO USUARIO INMEDIATAMENTE
+    console.log('🚪 Cerrando sesión del nuevo usuario...');
+    await signOut(auth);
+    console.log('✅ Sesión del nuevo usuario cerrada');
     
-    setLoadingAction(true);
+    // ===== PREPARAR DATOS PARA ENVÍO DE EMAIL =====
+    const nuevoUsuarioData = { 
+      ...userData, 
+      password, 
+      docId: docRef.id 
+    };
     
+    console.log('📧 Preparando envío de email...');
+    console.log('📮 Destinatario:', nuevoUsuarioData.correoPersonal);
+    console.log('👤 Nombre completo:', `${nuevoUsuarioData.nombres} ${nuevoUsuarioData.apellidoPaterno} ${nuevoUsuarioData.apellidoMaterno || ''}`.trim());
+    
+    // ===== ENVIAR EMAIL =====
+    let emailEnviado = false;
     try {
-      // Verificar email si cambió
-      if (formData.email !== selectedUser.email) {
-        const emailExiste = await verificarEmailExistente(formData.email, selectedUser.id);
-        if (emailExiste) {
-          mostrarNotificacion('Este email ya está en uso', 'error');
-          setLoadingAction(false);
-          return;
-        }
-      }
-      
-      // Actualizar en Firestore
-      await updateDoc(doc(db, 'usuarios', selectedUser.id), {
-        nombre: formData.nombre.trim(),
-        email: formData.email.trim(),
-        rol: formData.rol,
-        activo: formData.activo,
-        fechaActualizacion: new Date().toISOString()
-      });
-      
-      // Registrar acción
-      await registrarAccionAdmin(
-        'admin-temp',
-        'admin@sistema.com',
-        'Editar usuario',
-        `Usuario editado: ${formData.nombre} (${formData.email})`,
-        'Gestión de Usuarios',
-        'exitoso'
-      );
-      
-      setShowEditModal(false);
-      setSelectedUser(null);
-      mostrarNotificacion('Usuario actualizado exitosamente', 'success');
-    } catch (error) {
-      console.error('Error al actualizar usuario:', error);
-      mostrarNotificacion('Error al actualizar usuario', 'error');
-    } finally {
-      setLoadingAction(false);
+      console.log('📤 Iniciando envío de email...');
+      emailEnviado = await enviarEmailCredenciales(nuevoUsuarioData, password);
+      console.log('📧 Resultado envío email:', emailEnviado ? 'EXITOSO' : 'FALLÓ');
+    } catch (emailError) {
+      console.error('❌ Error específico al enviar email:', emailError);
+      emailEnviado = false;
     }
-  };
+    
+    // ===== PREPARAR DATOS PARA MODAL =====
+    nuevoUsuarioData.emailEnviado = emailEnviado;
+    setNuevoUsuario(nuevoUsuarioData);
+    
+    // ===== RESETEAR FORMULARIO =====
+    setFormData({
+      nombres: '',
+      apellidoPaterno: '',
+      apellidoMaterno: '',
+      ci: '',
+      genero: 'masculino',
+      celular: '',
+      correoPersonal: '',
+      role: 'receptionist',
+    });
+    
+    console.log('📋 Formulario reseteado');
+    
+    // ===== MOSTRAR MODAL =====
+    setShowNewUserModal(true);
+    console.log('🪟 Modal de credenciales mostrado');
+    
+    // ===== NOTIFICACIÓN DE ÉXITO =====
+    const mensajeExito = emailEnviado 
+      ? 'Administrador creado correctamente. Credenciales enviadas por correo.'
+      : 'Administrador creado correctamente. Revise las credenciales en pantalla.';
+    mostrarNotificacion(mensajeExito, 'success');
+    
+    console.log('✅ ========================================');
+    console.log('✅ USUARIO CREADO EXITOSAMENTE');
+    console.log('✅ ========================================');
+    console.log('📧 Email corporativo:', email);
+    console.log('🔑 Contraseña temporal:', password);
+    console.log('📮 Email enviado:', emailEnviado ? 'SÍ' : 'NO');
+    console.log('📥 Correo personal:', nuevoUsuarioData.correoPersonal);
+    console.log('✅ ========================================');
+    
+  } catch (error) {
+    console.error('❌ ========================================');
+    console.error('❌ ERROR AL CREAR USUARIO');
+    console.error('❌ ========================================');
+    console.error('❌ Error completo:', error);
+    console.error('❌ Código de error:', error.code);
+    console.error('❌ Mensaje:', error.message);
+    console.error('❌ Stack:', error.stack);
+    console.error('❌ ========================================');
+    
+    let mensajeError = 'Error al crear administrador';
+    
+    if (error.code === 'auth/email-already-in-use') {
+      mensajeError = 'Este correo electrónico ya está en uso';
+      console.error('🔍 SUGERENCIA: El email ya existe en Firebase Auth');
+    } else if (error.code === 'auth/invalid-email') {
+      mensajeError = 'El formato del correo electrónico no es válido';
+      console.error('🔍 SUGERENCIA: Verificar formato del email generado');
+    } else if (error.code === 'auth/weak-password') {
+      mensajeError = 'La contraseña es demasiado débil';
+      console.error('🔍 SUGERENCIA: Verificar función generarContraseña()');
+    } else if (error.code === 'auth/network-request-failed') {
+      mensajeError = 'Error de conexión. Verifique su internet.';
+      console.error('🔍 SUGERENCIA: Problema de conectividad');
+    }
+    
+    mostrarNotificacion(mensajeError, 'error');
+  } finally {
+    setLoading(false);
+    console.log('🏁 Proceso de creación finalizado');
+  }
+};
 
-  // Eliminar usuario
-  const handleDeleteUser = async (userId, nombreUsuario) => {
-    if (!window.confirm(`¿Está seguro de eliminar al usuario ${nombreUsuario}?`)) {
-      return;
-    }
-    
-    setLoadingAction(true);
-    
-    try {
-      await deleteDoc(doc(db, 'usuarios', userId));
-      
-      // Registrar acción
-      await registrarAccionAdmin(
-        'admin-temp',
-        'admin@sistema.com',
-        'Eliminar usuario',
-        `Usuario eliminado: ${nombreUsuario}`,
-        'Gestión de Usuarios',
-        'exitoso'
-      );
-      
-      mostrarNotificacion('Usuario eliminado exitosamente', 'success');
-    } catch (error) {
-      console.error('Error al eliminar usuario:', error);
-      mostrarNotificacion('Error al eliminar usuario', 'error');
-    } finally {
-      setLoadingAction(false);
-    }
-  };
-
-  // Resetear contraseña
-  const handleResetPassword = async (usuario) => {
-    if (!window.confirm(`¿Está seguro de resetear la contraseña de ${usuario.nombre}?`)) {
-      return;
-    }
-    
-    setLoadingAction(true);
-    
-    try {
-      const nuevaPassword = generarContraseña();
-      
-      // Actualizar en Firestore
-      await updateDoc(doc(db, 'usuarios', usuario.id), {
-        requiereCambioPassword: true,
-        fechaActualizacion: new Date().toISOString()
-      });
-      
-      // Registrar acción
-      await registrarAccionAdmin(
-        'admin-temp',
-        'admin@sistema.com',
-        'Resetear contraseña',
-        `Contraseña reseteada para: ${usuario.nombre}`,
-        'Gestión de Usuarios',
-        'exitoso'
-      );
-      
-      // Preparar datos para mostrar
-      setNuevoUsuario({
-        ...usuario,
-        password: nuevaPassword
-      });
-      
-      setShowPasswordModal(true);
-      mostrarNotificacion('Contraseña reseteada exitosamente', 'success');
-    } catch (error) {
-      console.error('Error al resetear contraseña:', error);
-      mostrarNotificacion('Error al resetear contraseña', 'error');
-    } finally {
-      setLoadingAction(false);
-    }
-  };
-
-  // Cambiar estado del usuario
-  const toggleUserStatus = async (userId, currentStatus, nombreUsuario) => {
-    setLoadingAction(true);
-    
-    try {
-      await updateDoc(doc(db, 'usuarios', userId), {
-        activo: !currentStatus,
-        fechaActualizacion: new Date().toISOString()
-      });
-      
-      const accion = !currentStatus ? 'activar' : 'desactivar';
-      
-      // Registrar acción
-      await registrarAccionAdmin(
-        'admin-temp',
-        'admin@sistema.com',
-        `${accion} usuario`,
-        `Usuario ${accion}do: ${nombreUsuario}`,
-        'Gestión de Usuarios',
-        'exitoso'
-      );
-      
-      const mensaje = !currentStatus ? 'Usuario activado correctamente' : 'Usuario desactivado correctamente';
-      mostrarNotificacion(mensaje, 'success');
-    } catch (error) {
-      console.error('Error al cambiar estado del usuario:', error);
-      mostrarNotificacion('Error al cambiar estado del usuario', 'error');
-    } finally {
-      setLoadingAction(false);
-    }
-  };
-
-  // Copiar al portapapeles
+  // Copiar información al portapapeles
   const copiarAlPortapapeles = (texto) => {
     navigator.clipboard.writeText(texto)
-      .then(() => mostrarNotificacion('Copiado al portapapeles', 'success'))
-      .catch(() => mostrarNotificacion('Error al copiar', 'error'));
+      .then(() => mostrarNotificacion('Información copiada al portapapeles', 'success'))
+      .catch(err => mostrarNotificacion('Error al copiar información', 'error'));
   };
 
-  // Abrir modal de edición
-  const openEditModal = (user) => {
-    setSelectedUser(user);
-    setFormData({
-      nombre: user.nombre,
-      email: user.email,
-      rol: user.rol,
-      activo: user.activo
-    });
-    setShowEditModal(true);
-  };
-
-  // Formatear fecha
-  const formatearFecha = (fecha) => {
-    if (!fecha) return 'N/A';
-    return new Date(fecha).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  // Traducir rol
-  const traducirRol = (rol) => {
-    switch(rol) {
-      case 'administrador': return 'Administrador';
-      case 'operador': return 'Operador';
-      default: return rol;
-    }
-  };
-
-  // Filtrar usuarios
-  const filteredUsuarios = usuarios.filter(user => {
-    const searchLower = searchTerm.toLowerCase();
+  // Renderizado de modal de cambio de contraseña
+  const renderModalCambioClave = () => {
     return (
-      user.nombre?.toLowerCase().includes(searchLower) ||
-      user.email?.toLowerCase().includes(searchLower) ||
-      user.rol?.toLowerCase().includes(searchLower)
+      <div className="modal-overlay">
+        <div className="modal-container">
+          <div className="modal-header">
+            <h3>Cambio de Contraseña Obligatorio</h3>
+          </div>
+          
+          <form onSubmit={handleCambioClave} className="modal-body">
+            <p>Por seguridad, debe cambiar su contraseña en el primer inicio de sesión.</p>
+            
+            <div className="form-group">
+              <label htmlFor="nuevaClave">Nueva Contraseña</label>
+              <input 
+                type="password"
+                id="nuevaClave"
+                value={nuevaClave}
+                onChange={(e) => setNuevaClave(e.target.value)}
+                required
+                minLength={8}
+              />
+            </div>
+            
+            <div className="form-group">
+              <label htmlFor="confirmarClave">Confirmar Nueva Contraseña</label>
+              <input 
+                type="password"
+                id="confirmarClave"
+                value={confirmarClave}
+                onChange={(e) => setConfirmarClave(e.target.value)}
+                required
+                minLength={8}
+              />
+            </div>
+            
+            <div className="form-info">
+              <p><small>La contraseña debe contener:</small></p>
+              <ul>
+                <li>Mínimo 8 caracteres</li>
+                <li>Al menos una mayúscula</li>
+                <li>Al menos una minúscula</li>
+                <li>Al menos un número</li>
+                <li>Al menos un carácter especial</li>
+              </ul>
+            </div>
+            
+            <div className="modal-footer">
+              <button 
+                type="submit" 
+                className="btn-primary" 
+                disabled={loading}
+              >
+                {loading ? 'Cambiando...' : 'Cambiar Contraseña'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     );
-  });
+  };
 
+  // Renderizado del formulario de registro
+  const renderFormularioRegistro = () => {
+    return (
+      <div className="usuarios-section">
+        <div className="form-card">
+          <h3>Registrar Nuevo Administrador</h3>
+          
+          <form onSubmit={handleSubmit} className="usuario-form">
+            <div className="form-grid">
+              <div className="form-group">
+                <label htmlFor="nombres">Nombres *</label>
+                <input 
+                  type="text" 
+                  id="nombres"
+                  name="nombres" 
+                  value={formData.nombres} 
+                  onChange={handleInputChange} 
+                  required 
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="apellidoPaterno">Apellido Paterno *</label>
+                <input 
+                  type="text" 
+                  id="apellidoPaterno"
+                  name="apellidoPaterno" 
+                  value={formData.apellidoPaterno} 
+                  onChange={handleInputChange} 
+                  required 
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="apellidoMaterno">Apellido Materno</label>
+                <input 
+                  type="text" 
+                  id="apellidoMaterno"
+                  name="apellidoMaterno" 
+                  value={formData.apellidoMaterno} 
+                  onChange={handleInputChange} 
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="ci">Carnet de Identidad *</label>
+                <input 
+                  type="text" 
+                  id="ci"
+                  name="ci" 
+                  value={formData.ci} 
+                  onChange={handleInputChange} 
+                  pattern="\d{5,10}"
+                  title="El carnet debe contener entre 5 y 10 dígitos"
+                  required 
+                />
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="genero">Género *</label>
+                <select 
+                  id="genero"
+                  name="genero" 
+                  value={formData.genero} 
+                  onChange={handleInputChange}
+                  required
+                >
+                  <option value="masculino">Masculino</option>
+                  <option value="femenino">Femenino</option>
+                  <option value="otro">Otro</option>
+                </select>
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="celular">Celular *</label>
+                <input 
+                  type="tel" 
+                  id="celular"
+                  name="celular" 
+                  value={formData.celular} 
+                  onChange={handleInputChange} 
+                  pattern="\d{8}"
+                  title="El número de celular debe contener 8 dígitos"
+                  required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="correoPersonal">Correo Personal *</label>
+                <input 
+                  type="email" 
+                  id="correoPersonal"
+                  name="correoPersonal" 
+                  value={formData.correoPersonal} 
+                  onChange={handleInputChange} 
+                  placeholder="ejemplo@gmail.com"
+                  title="Ingrese un correo personal válido donde se enviarán las credenciales"
+                  required 
+                />
+                <small className="form-help">
+                  📧 Las credenciales de acceso se enviarán a este correo
+                </small>
+              </div>
+              
+              <div className="form-group">
+                <label htmlFor="role">Tipo de Administrador *</label>
+                <select 
+                  id="role"
+                  name="role" 
+                  value={formData.role} 
+                  onChange={handleInputChange}
+                  required
+                >
+                  <option value="receptionist">Recepcionista</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="form-info">
+              <p><small>* Campos obligatorios</small></p>
+              <p><small>📧 <strong>Correo institucional:</strong> Se generará automáticamente usando la primera letra del nombre, el apellido paterno completo y la primera letra del apellido materno.</small></p>
+              <p><small>🔐 <strong>Contraseña:</strong> Se generará automáticamente y se enviará al correo personal.</small></p>
+              <p><small>📨 <strong>Notificación:</strong> Las credenciales de acceso se enviarán automáticamente al correo personal proporcionado.</small></p>
+            </div>
+            
+            <div className="form-actions">
+              <button type="submit" className="btn-primary" disabled={loading || enviandoEmail}>
+                {loading 
+                  ? 'Creando...' 
+                  : enviandoEmail 
+                  ? 'Enviando credenciales...' 
+                  : 'Crear Nuevo Administrador'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
+  // Renderizado de componente principal
   return (
     <div className="gestion-usuarios-container">
-      {/* Header */}
+      {/* Modal de cambio de contraseña obligatorio */}
+      {modalCambioClave && renderModalCambioClave()}
+
+      {/* Encabezado de sección */}
       <div className="section-header">
-        <div className="header-content">
-          <h2>
-            <Users className="header-icon" />
-            Gestión de Personal del Sistema
-          </h2>
-          <div className="header-stats">
-            <span className="stat-item">
-              <Shield className="stat-icon" />
-              Total: {usuarios.length}
-            </span>
-            <span className="stat-item">
-              <CheckCircle className="stat-icon" />
-              Activos: {usuarios.filter(u => u.activo).length}
-            </span>
-          </div>
-        </div>
-        <button 
-          className="btn-primary"
-          onClick={() => setShowNewUserModal(true)}
-        >
-          <Plus className="btn-icon" />
-          Nuevo Usuario
-        </button>
+        <h2>Panel de Gestión de Administradores</h2>
+        <div className="green-underline"></div>
       </div>
 
-      {/* Barra de búsqueda */}
-      <div className="search-section">
-        <div className="search-bar">
-          <Search className="search-icon" />
-          <input
-            type="text"
-            placeholder="Buscar por nombre, email o rol..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
+      {/* Sistema de pestañas */}
+      <div className="tabs-container">
+        <div className="tabs-nav">
+          <button 
+            className={`tab-button ${activeTab === 'registro' ? 'active' : ''}`}
+            onClick={() => setActiveTab('registro')}
+          >
+            <i className="fa fa-plus-circle"></i>
+            <span>Registrar Administrador</span>
+          </button>
+          <button 
+            className={`tab-button ${activeTab === 'lista' ? 'active' : ''}`}
+            onClick={() => setActiveTab('lista')}
+          >
+            <i className="fa fa-list"></i>
+            <span>Lista de Administradores</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Contenido de las pestañas */}
+      <div className="tab-content">
+        {activeTab === 'registro' && renderFormularioRegistro()}
+        
+        {activeTab === 'lista' && (
+          <GestionAdmTabla 
+            usuarios={usuarios}
+            loading={loading}
+            mostrarNotificacion={mostrarNotificacion}
+            generarContraseña={generarContraseña}
+            copiarAlPortapapeles={copiarAlPortapapeles}
+            setShowNewUserModal={setShowNewUserModal}
+            setNuevoUsuario={setNuevoUsuario}
+            showNewUserModal={showNewUserModal}
+            nuevoUsuario={nuevoUsuario}
+            enviarEmailCredenciales={enviarEmailCredenciales}
           />
-        </div>
-      </div>
-
-      {/* Tabla de usuarios */}
-      <div className="usuarios-table-container">
-        <div className="table-header">
-          <h3>Lista de Personal Registrados</h3>
-          <span className="users-count">
-            {filteredUsuarios.length} de {usuarios.length} usuarios
-          </span>
-        </div>
-        
-        {loading && (
-          <div className="loading-container">
-            <div className="loading-spinner"></div>
-            <p className="loading-message">Cargando usuarios...</p>
-          </div>
-        )}
-        
-        {!loading && filteredUsuarios.length === 0 && (
-          <div className="empty-state">
-            <Users className="empty-icon" />
-            <p>No hay usuarios que coincidan con la búsqueda</p>
-          </div>
-        )}
-        
-        {!loading && filteredUsuarios.length > 0 && (
-          <div className="table-responsive">
-            <table className="usuarios-table">
-              <thead>
-                <tr>
-                  <th>Usuario</th>
-                  <th>Email</th>
-                  <th>Rol</th>
-                  <th>Estado</th>
-                  <th>Fecha Creación</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredUsuarios.map((usuario) => (
-                  <tr key={usuario.id} className={usuario.activo ? 'row-active' : 'row-inactive'}>
-                    <td data-label="Usuario">
-                      <div className="user-info">
-                        <div className="user-avatar">
-                          {usuario.nombre?.charAt(0).toUpperCase() || 'U'}
-                        </div>
-                        <div className="user-details">
-                          <span className="user-name">{usuario.nombre}</span>
-                          <span className="user-id">ID: {usuario.uid?.substring(0, 8) || 'N/A'}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td data-label="Email">
-                      <span className="user-email">{usuario.email}</span>
-                    </td>
-                    <td data-label="Rol">
-                      <span className={`role-badge ${usuario.rol}`}>
-                        {traducirRol(usuario.rol)}
-                      </span>
-                    </td>
-                    <td data-label="Estado">
-                      <span className={`status-badge ${usuario.activo ? 'active' : 'inactive'}`}>
-                        {usuario.activo ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </td>
-                    <td data-label="Fecha Creación">
-                      <span className="creation-date">
-                        {formatearFecha(usuario.fechaCreacion)}
-                      </span>
-                    </td>
-                    <td data-label="Acciones">
-                      <div className="actions-group">
-                        <button 
-                          className="btn-action edit"
-                          onClick={() => openEditModal(usuario)}
-                          title="Editar usuario"
-                          disabled={loadingAction}
-                        >
-                          <Edit className="action-icon" />
-                        </button>
-                        <button 
-                          className="btn-action reset"
-                          onClick={() => handleResetPassword(usuario)}
-                          title="Resetear contraseña"
-                          disabled={loadingAction}
-                        >
-                          <Key className="action-icon" />
-                        </button>
-                        <button 
-                          className={`btn-action ${usuario.activo ? 'deactivate' : 'activate'}`}
-                          onClick={() => toggleUserStatus(usuario.id, usuario.activo, usuario.nombre)}
-                          title={usuario.activo ? 'Desactivar usuario' : 'Activar usuario'}
-                          disabled={loadingAction}
-                        >
-                          {usuario.activo ? <EyeOff className="action-icon" /> : <Eye className="action-icon" />}
-                        </button>
-                        <button 
-                          className="btn-action delete"
-                          onClick={() => handleDeleteUser(usuario.id, usuario.nombre)}
-                          title="Eliminar usuario"
-                          disabled={loadingAction}
-                        >
-                          <Trash2 className="action-icon" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         )}
       </div>
 
-      {/* Modal Nuevo Usuario */}
-      {showNewUserModal && (
+      {/* Modal para nuevo usuario */}
+      {showNewUserModal && nuevoUsuario && (
         <div className="modal-overlay">
           <div className="modal-container">
             <div className="modal-header">
-              <h3>
-                <UserPlus className="modal-icon" />
-                Crear Nuevo Usuario
-              </h3>
+              <h3>Nuevo Administrador Creado</h3>
               <button 
                 className="close-button" 
                 onClick={() => setShowNewUserModal(false)}
               >
-                <X className="close-icon" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="modal-body">
-              <div className="form-group">
-                <label htmlFor="nombre">Nombre Completo *</label>
-                <input 
-                  type="text" 
-                  id="nombre"
-                  name="nombre" 
-                  value={formData.nombre} 
-                  onChange={handleInputChange} 
-                  required 
-                  placeholder="Ej: Juan Pérez López"
-                />
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="email">Email Corporativo *</label>
-                <input 
-                  type="email" 
-                  id="email"
-                  name="email" 
-                  value={formData.email} 
-                  onChange={handleInputChange} 
-                  required 
-                  placeholder="Ej: juan.perez@alto.gov.bo"
-                />
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="rol">Rol del Usuario *</label>
-                <select 
-                  id="rol"
-                  name="rol" 
-                  value={formData.rol} 
-                  onChange={handleInputChange}
-                  required
-                >
-                  <option value="operador">Operador</option>
-                  <option value="administrador">Administrador</option>
-                </select>
-              </div>
-              
-              <div className="form-group">
-                <label className="checkbox-label">
-                  <input 
-                    type="checkbox"
-                    name="activo" 
-                    checked={formData.activo} 
-                    onChange={handleInputChange}
-                  />
-                  <span className="checkbox-custom"></span>
-                  Usuario activo desde la creación
-                </label>
-              </div>
-              
-              <div className="form-info">
-                <AlertCircle className="info-icon" />
-                <div>
-                  <p><strong>Información importante:</strong></p>
-                  <ul>
-                    <li>Se generará una contraseña temporal automáticamente</li>
-                    <li>El usuario deberá cambiarla en su primer inicio de sesión</li>
-                    <li>Se enviará un email con las credenciales de acceso</li>
-                  </ul>
-                </div>
-              </div>
-              
-              <div className="modal-footer">
-                <button 
-                  type="button" 
-                  className="btn-secondary" 
-                  onClick={() => setShowNewUserModal(false)}
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn-primary" 
-                  disabled={loadingAction}
-                >
-                  {loadingAction ? (
-                    <>
-                      <div className="spinner"></div>
-                      Creando...
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="btn-icon" />
-                      Crear Usuario
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Editar Usuario */}
-      {showEditModal && selectedUser && (
-        <div className="modal-overlay">
-          <div className="modal-container">
-            <div className="modal-header">
-              <h3>
-                <Edit className="modal-icon" />
-                Editar Usuario
-              </h3>
-              <button 
-                className="close-button" 
-                onClick={() => setShowEditModal(false)}
-              >
-                <X className="close-icon" />
-              </button>
-            </div>
-            
-            <form onSubmit={handleEditUser} className="modal-body">
-              <div className="form-group">
-                <label htmlFor="editNombre">Nombre Completo *</label>
-                <input 
-                  type="text" 
-                  id="editNombre"
-                  name="nombre" 
-                  value={formData.nombre} 
-                  onChange={handleInputChange} 
-                  required 
-                />
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="editEmail">Email Corporativo *</label>
-                <input 
-                  type="email" 
-                  id="editEmail"
-                  name="email" 
-                  value={formData.email} 
-                  onChange={handleInputChange} 
-                  required 
-                />
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="editRol">Rol del Usuario *</label>
-                <select 
-                  id="editRol"
-                  name="rol" 
-                  value={formData.rol} 
-                  onChange={handleInputChange}
-                  required
-                >
-                  <option value="operador">Operador</option>
-                  <option value="administrador">Administrador</option>
-                </select>
-              </div>
-              
-              <div className="form-group">
-                <label className="checkbox-label">
-                  <input 
-                    type="checkbox"
-                    name="activo" 
-                    checked={formData.activo} 
-                    onChange={handleInputChange}
-                  />
-                  <span className="checkbox-custom"></span>
-                  Usuario activo
-                </label>
-              </div>
-              
-              <div className="modal-footer">
-                <button 
-                  type="button" 
-                  className="btn-secondary" 
-                  onClick={() => setShowEditModal(false)}
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  className="btn-primary" 
-                  disabled={loadingAction}
-                >
-                  {loadingAction ? (
-                    <>
-                      <div className="spinner"></div>
-                      Guardando...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="btn-icon" />
-                      Guardar Cambios
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Contraseña Generada */}
-      {showPasswordModal && nuevoUsuario && (
-        <div className="modal-overlay">
-          <div className="modal-container">
-            <div className="modal-header">
-              <h3>
-                <CheckCircle className="modal-icon success" />
-                Credenciales Generadas
-              </h3>
-              <button 
-                className="close-button" 
-                onClick={() => setShowPasswordModal(false)}
-              >
-                <X className="close-icon" />
+                &times;
               </button>
             </div>
             
             <div className="modal-body">
-              <div className="success-message">
-                <CheckCircle className="success-icon" />
-                <p>Las credenciales para <strong>{nuevoUsuario.nombre}</strong> han sido generadas exitosamente.</p>
-              </div>
-              
+              <h4>Información del Administrador</h4>
+              <p><strong>Nombre completo:</strong> {`${nuevoUsuario.nombres} ${nuevoUsuario.apellidoPaterno} ${nuevoUsuario.apellidoMaterno}`}</p>
+              <p><strong>Tipo:</strong> {nuevoUsuario.role === 'admin' ? 'Administrador' : 'Recepcionista'}</p>
+              <p><strong>Correo personal:</strong> {nuevoUsuario.correoPersonal}</p>
+
               <div className="credentials-box">
                 <h4>Credenciales de Acceso</h4>
                 <div className="credential-item">
-                  <span className="credential-label">Email:</span>
-                  <span className="credential-value">{nuevoUsuario.email}</span>
-                  <button 
-                    className="copy-btn"
-                    onClick={() => copiarAlPortapapeles(nuevoUsuario.email)}
-                    title="Copiar email"
-                  >
-                    <Copy className="copy-icon" />
-                  </button>
+                  <span><strong>Correo electrónico:</strong> {nuevoUsuario.email}</span>
                 </div>
                 <div className="credential-item">
-                  <span className="credential-label">Contraseña:</span>
-                  <span className="credential-value">{nuevoUsuario.password}</span>
-                  <button 
-                    className="copy-btn"
-                    onClick={() => copiarAlPortapapeles(nuevoUsuario.password)}
-                    title="Copiar contraseña"
-                  >
-                    <Copy className="copy-icon" />
-                  </button>
+                  <span><strong>Contraseña temporal:</strong> {nuevoUsuario.password}</span>
                 </div>
               </div>
+              
+              {/* 🔧 FIX: Mostrar estado del envío de email */}
+              {nuevoUsuario.emailEnviado ? (
+                <div className="success-box">
+                  <i className="fa fa-check-circle"></i>
+                  <p><strong>✅ CREDENCIALES ENVIADAS:</strong> Las credenciales de acceso han sido enviadas automáticamente al correo personal: <strong>{nuevoUsuario.correoPersonal}</strong></p>
+                </div>
+              ) : (
+                <div className="warning-box">
+                  <i className="fa fa-exclamation-triangle"></i>
+                  <p><strong>⚠️ EMAIL NO ENVIADO:</strong> No se pudieron enviar las credenciales automáticamente. Por favor, comparta estas credenciales manualmente con el usuario.</p>
+                </div>
+              )}
               
               <div className="warning-box">
-                <AlertCircle className="warning-icon" />
-                <div>
-                  <p><strong>IMPORTANTE:</strong></p>
-                  <ul>
-                    <li>Guarde estas credenciales en un lugar seguro</li>
-                    <li>El usuario deberá cambiar su contraseña en el primer inicio de sesión</li>
-                    <li>Estas credenciales no se mostrarán nuevamente</li>
-                  </ul>
-                </div>
+                <i className="fa fa-exclamation-triangle"></i>
+                <p><strong>ADVERTENCIA:</strong> GUARDE ESTAS CREDENCIALES DE ACCESO. EL USUARIO DEBERÁ CAMBIAR SU CONTRASEÑA EN EL PRIMER INICIO DE SESIÓN.</p>
               </div>
               
-              <div className="modal-footer">
-                <button 
-                  className="btn-copy-all" 
-                  onClick={() => copiarAlPortapapeles(`Email: ${nuevoUsuario.email}\nContraseña: ${nuevoUsuario.password}`)}
-                >
-                  <Copy className="btn-icon" />
-                  Copiar Todo
-                </button>
-                <button 
-                  className="btn-primary" 
-                  onClick={() => setShowPasswordModal(false)}
-                >
-                  <CheckCircle className="btn-icon" />
-                  Entendido
-                </button>
+              <div className="info-box">
+                <i className="fa fa-info-circle"></i>
+                <p>Por razones de seguridad, estas credenciales no podrán ser recuperadas una vez que cierre esta ventana.</p>
               </div>
+            </div>
+            
+            <div className="modal-footer">
+              <button 
+                className="btn-copy-all" 
+                onClick={() => copiarAlPortapapeles(`Correo: ${nuevoUsuario.email}\nContraseña: ${nuevoUsuario.password}`)}
+              >
+                <i className="fa fa-copy"></i> Copiar Todas las Credenciales
+              </button>
+              <button 
+                className="btn-primary" 
+                onClick={() => setShowNewUserModal(false)}
+              >
+                Entendido
+              </button>
             </div>
           </div>
         </div>
       )}
       
-      {/* Notificaciones */}
+      {/* Sistema de notificaciones */}
       {notificacion.visible && (
         <div className={`notification notification-${notificacion.tipo}`}>
-          <div className="notification-content">
-            <div className="notification-icon">
-              {notificacion.tipo === 'success' && <CheckCircle />}
-              {notificacion.tipo === 'error' && <AlertCircle />}
-              {notificacion.tipo === 'warning' && <AlertCircle />}
-              {notificacion.tipo === 'info' && <AlertCircle />}
-            </div>
-            <span className="notification-message">{notificacion.mensaje}</span>
-          </div>
+          <span className="notification-message">{notificacion.mensaje}</span>
           <button 
             className="notification-close" 
             onClick={() => setNotificacion(prev => ({ ...prev, visible: false }))}
           >
-            <X className="notification-icon" />
+            <i className="fa fa-times"></i>
           </button>
         </div>
       )}
