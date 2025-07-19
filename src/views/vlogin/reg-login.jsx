@@ -227,7 +227,7 @@ function RegLogin({ setUserRole }) {
           alt="Logo Villa Adela" 
           className="login-image" 
         />
-        <h2>Sistema de Alumbrado Público</h2>
+        <h2>Smart Ligth</h2>
 
         <form onSubmit={handleIngresarClick}>
           <input

@@ -144,7 +144,7 @@ input::placeholder {
 .bienvenida-login-button,
 button {
   background: linear-gradient(135deg, var(--neutral-dark) 0%,var(--secondary-blue) 100%);
-  color: var(--primary-dark);
+  color: var(--primary-light);
   font-size: 16px;
   font-weight: 600;
   padding: 14px;
