@@ -18,20 +18,16 @@ export class HttpManager {
     this.pollFrequency = 3000; // 3 segundos
   }
 
-  // MÉTODO PRINCIPAL: Fetch con configuración CORS corregida
+  // MÉTODO PRINCIPAL: Fetch con configuración CORS MINIMALISTA
   getFetchOptions(method = 'GET', body = null) {
     const options = {
       method: method,
       mode: 'cors',              // ← CORS explícito
-      cache: 'no-cache',         // ← Evitar cache
-      credentials: 'omit',       // ← Sin credenciales
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-        // NO añadir Cache-Control u otros headers que puedan causar preflight
-      },
-      redirect: 'follow',
-      referrerPolicy: 'no-referrer'
+        'Content-Type': 'application/json'
+        // ← SOLO Content-Type, sin Accept ni otros headers
+      }
+      // ← ELIMINAMOS: cache, credentials, redirect, referrerPolicy
     };
 
     if (body) {
@@ -45,12 +41,12 @@ export class HttpManager {
     try {
       console.log(`🔄 Conectando a ${this.baseUrl}`);
      
-      // Probar conexión con timeout y configuración CORS corregida
+      // Probar conexión con timeout y configuración CORS minimalista
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
      
       const response = await fetch(`${this.baseUrl}/api/status`, {
-        ...this.getFetchOptions('GET'),  // ← USAR CONFIGURACIÓN CORREGIDA
+        ...this.getFetchOptions('GET'),
         signal: controller.signal
       });
      
@@ -100,9 +96,8 @@ export class HttpManager {
         const timeoutId = setTimeout(() => controller.abort(), 3000);
        
         const response = await fetch(`${this.baseUrl}/api/status`, {
-          ...this.getFetchOptions('GET'),  // ← USAR CONFIGURACIÓN CORREGIDA
+          ...this.getFetchOptions('GET'),
           signal: controller.signal
-          // NO añadir headers adicionales como Cache-Control
         });
        
         clearTimeout(timeoutId);
@@ -162,7 +157,7 @@ export class HttpManager {
       const timeoutId = setTimeout(() => controller.abort(), 5000);
      
       const response = await fetch(`${this.baseUrl}/api/led`, {
-        ...this.getFetchOptions('POST', { intensity: parseInt(intensity) }),  // ← USAR CONFIGURACIÓN CORREGIDA
+        ...this.getFetchOptions('POST', { intensity: parseInt(intensity) }),
         signal: controller.signal
       });
      
@@ -195,7 +190,7 @@ export class HttpManager {
       const timeoutId = setTimeout(() => controller.abort(), 3000);
      
       const response = await fetch(`${this.baseUrl}/api/status`, {
-        ...this.getFetchOptions('GET'),  // ← USAR CONFIGURACIÓN CORREGIDA
+        ...this.getFetchOptions('GET'),
         signal: controller.signal
       });
      
@@ -218,7 +213,7 @@ export class HttpManager {
    
     try {
       const response = await fetch(`${this.baseUrl}/api/config`, {
-        ...this.getFetchOptions('POST', { ip: newIP })  // ← USAR CONFIGURACIÓN CORREGIDA
+        ...this.getFetchOptions('POST', { ip: newIP })
       });
      
       if (response.ok) {
@@ -232,7 +227,7 @@ export class HttpManager {
     return false;
   }
 
-  // NUEVO MÉTODO: Cambiar IP en ESP32 (como en MapeoDispositivos)
+  // MÉTODO: Cambiar IP en ESP32 (como en MapeoDispositivos)
   async changeIPOnDevice(newIP) {
     try {
       console.log(`🌐 Enviando comando cambio IP: ${this.ip} → ${newIP}`);
@@ -241,7 +236,7 @@ export class HttpManager {
       const timeoutId = setTimeout(() => controller.abort(), 10000);
       
       const response = await fetch(`${this.baseUrl}/api/config`, {
-        ...this.getFetchOptions('POST', { ip: newIP }),  // ← USAR CONFIGURACIÓN CORREGIDA
+        ...this.getFetchOptions('POST', { ip: newIP }),
         signal: controller.signal
       });
       
@@ -284,7 +279,7 @@ export class HttpManager {
       const timeoutId = setTimeout(() => controller.abort(), 2000);
      
       const response = await fetch(`${this.baseUrl}/api/status`, {
-        ...this.getFetchOptions('GET'),  // ← USAR CONFIGURACIÓN CORREGIDA
+        ...this.getFetchOptions('GET'),
         signal: controller.signal
       });
      
@@ -299,7 +294,7 @@ export class HttpManager {
   async getDeviceInfo() {
     try {
       const response = await fetch(`${this.baseUrl}/api/info`, {
-        ...this.getFetchOptions('GET')  // ← USAR CONFIGURACIÓN CORREGIDA
+        ...this.getFetchOptions('GET')
       });
       
       if (response.ok) {
@@ -311,7 +306,7 @@ export class HttpManager {
     return null;
   }
 
-  // NUEVO MÉTODO: Probar conectividad con detalles de error
+  // MÉTODO: Probar conectividad con detalles de error
   async testConnectionDetailed() {
     try {
       const controller = new AbortController();

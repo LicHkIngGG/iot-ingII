@@ -9,7 +9,8 @@ import { db } from './utils/firebase';
 import RegLogin from './views/vlogin/reg-login';
 
 // Componentes del sistema (usando las rutas del segundo código)
-import Dashboard from './components/monitoreos/Dashboard.jsx'
+//import Dashboard from './components/monitoreos/Dashboard.jsx'
+import Dashboard from './components/monitoreos/'
 import GestionUnidades from './components/GestionUnidades/GestionUnidades.jsx'
 import MapeoDispositivos from './components/MapeoDispositivos/MapeoDispositivos.jsx'
 import GestionUsuarios from './components/gestion-usuarios/gestion-usuarios.jsx';
