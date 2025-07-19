@@ -53,7 +53,7 @@ const GestionUsuarios = () => {
 
   // Configuraciones de autenticación
   const auth = getAuth();
-  const DOMAIN = 'vseguro.com';
+  const DOMAIN = 'alto.gov.bo';
 
   // 🔧 FIX 1: Modificar el efecto de autenticación para evitar modal automático
   useEffect(() => {
@@ -251,7 +251,7 @@ const enviarEmailCredenciales = async (usuarioData, password) => {
     console.log('👤 Nombre completo:', `${usuarioData.nombres} ${usuarioData.apellidoPaterno} ${usuarioData.apellidoMaterno || ''}`.trim());
     console.log('📧 Email corporativo:', usuarioData.email);
     console.log('🔑 Contraseña temporal:', password);
-    console.log('🎭 Tipo de usuario:', usuarioData.role === 'admin' ? 'Administrador' : 'Recepcionista');
+    console.log('🎭 Tipo de usuario:', usuarioData.role === 'admin' ? 'Administrador' : 'Operador');
     
     // Preparar payload para el backend
     const payload = {
@@ -259,7 +259,7 @@ const enviarEmailCredenciales = async (usuarioData, password) => {
       nombreCompleto: `${usuarioData.nombres} ${usuarioData.apellidoPaterno} ${usuarioData.apellidoMaterno || ''}`.trim(),
       emailCorporativo: usuarioData.email,
       passwordTemporal: password,
-      tipo: usuarioData.role === 'admin' ? 'Administrador' : 'Recepcionista'
+      tipo: usuarioData.role === 'admin' ? 'Administrador' : 'Operador'
     };
     
     console.log('📦 Payload para backend:', payload);
@@ -725,7 +725,7 @@ const handleSubmit = async (e) => {
                   onChange={handleInputChange}
                   required
                 >
-                  <option value="receptionist">Recepcionista</option>
+                  <option value="receptionist">Operador</option>
                   <option value="admin">Administrador</option>
                 </select>
               </div>
@@ -822,7 +822,7 @@ const handleSubmit = async (e) => {
             <div className="modal-body">
               <h4>Información del Administrador</h4>
               <p><strong>Nombre completo:</strong> {`${nuevoUsuario.nombres} ${nuevoUsuario.apellidoPaterno} ${nuevoUsuario.apellidoMaterno}`}</p>
-              <p><strong>Tipo:</strong> {nuevoUsuario.role === 'admin' ? 'Administrador' : 'Recepcionista'}</p>
+              <p><strong>Tipo:</strong> {nuevoUsuario.role === 'admin' ? 'Administrador' : 'Operador'}</p>
               <p><strong>Correo personal:</strong> {nuevoUsuario.correoPersonal}</p>
 
               <div className="credentials-box">

@@ -1,4 +1,4 @@
-// ⚙️ CONFIGURACIÓN DE EMAIL PARA Smart Light - CORREGIDO
+// ⚙️ CONFIGURACIÓN DE EMAIL PARA VIAJE SEGURO - CORREGIDO
 // backend/config/email.js
 
 const nodemailer = require('nodemailer');
@@ -53,10 +53,10 @@ const verifyEmailConnection = async (transporter) => {
  */
 const emailConfig = {
   from: {
-    name: process.env.COMPANY_NAME || 'Smart Light',
+    name: process.env.COMPANY_NAME || 'Smart Ligth',
     address: process.env.EMAIL_USER
   },
-  replyTo: process.env.COMPANY_EMAIL || 'soporte@SmartLight.com',
+  replyTo: process.env.COMPANY_EMAIL || 'soporte@alto.gov.bo',
   
   // Headers personalizados
   headers: {
@@ -71,15 +71,15 @@ const emailConfig = {
  */
 const emailTypes = {
   WELCOME: {
-    subject: 'Bienvenido a Smart Light - Credenciales de Acceso',
+    subject: 'Bienvenido a Smart Ligth - Credenciales de Acceso',
     priority: 'high'
   },
   PASSWORD_RESET: {
-    subject: 'Smart Light - Nuevas Credenciales de Acceso',
+    subject: 'Smart Ligth - Nuevas Credenciales de Acceso',
     priority: 'high'
   },
   NOTIFICATION: {
-    subject: 'Smart Light - Notificación del Sistema',
+    subject: 'Smart Ligth - Notificación del Sistema',
     priority: 'normal'
   }
 };

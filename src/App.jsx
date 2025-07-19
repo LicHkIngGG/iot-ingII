@@ -1,3 +1,4 @@
+// App.jsx - VERSIÓN COMBINADA
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { getAuth, onAuthStateChanged, signOut, setPersistence, browserSessionPersistence } from 'firebase/auth';
@@ -7,7 +8,7 @@ import { db } from './utils/firebase';
 // Componentes de autenticación
 import RegLogin from './views/vlogin/reg-login';
 
-// Componentes del sistema
+// Componentes del sistema (usando las rutas del segundo código)
 import Dashboard from './components/monitoreos/Dashboard.jsx'
 import GestionUnidades from './components/GestionUnidades/GestionUnidades.jsx'
 import MapeoDispositivos from './components/MapeoDispositivos/MapeoDispositivos.jsx'
@@ -29,16 +30,22 @@ function App() {
   const auth = getAuth();
 
   useEffect(() => {
-    // Configurar persistencia de sesión
+    // Deshabilitar persistencia de la sesión para evitar que se mantenga (lógica del primer código)
     setPersistence(auth, browserSessionPersistence)
       .then(() => {
         console.log('Persistencia de sesión configurada');
+        
+        // Verificar si ya hay un rol guardado localmente
+        const role = localStorage.getItem('userRole');
+        if (role) {
+          setUserRole(role);
+        }
       })
       .catch((error) => {
         console.error("Error configurando persistencia:", error);
       });
 
-    // Escuchar cambios de autenticación
+    // Escuchar cambios de autenticación (lógica del segundo código mejorada)
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
       
@@ -54,12 +61,20 @@ function App() {
             const userDoc = querySnapshot.docs[0];
             const userData = userDoc.data();
             
-            if (userData.activo) {
+            // Verificar si el usuario está activo (compatibilidad con ambos campos)
+            const isActive = userData.activo !== false && userData.active !== false;
+            
+            if (isActive) {
               // Usuario válido y activo
               setUser(firebaseUser);
-              setUserRole(userData.rol); // Usar 'rol' desde Firestore
-              localStorage.setItem('userRole', userData.rol);
+              
+              // Usar 'rol' como campo principal, 'role' como fallback
+              const userRole = userData.rol || userData.role;
+              setUserRole(userRole);
+              
+              localStorage.setItem('userRole', userRole);
               localStorage.setItem('userEmail', firebaseUser.email);
+              localStorage.setItem('userName', userData.nombre || userData.name || firebaseUser.email);
               
               // Inicializar datos si es necesario
               if (!localStorage.getItem('dataInitialized')) {
@@ -110,21 +125,24 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      console.log("Cerrando sesión...");
+      console.log("Iniciando proceso de logout desde App");
       
       setLoading(true);
       
-      // Limpiar estado
+      // 1. Limpiar almacenamiento local primero
+      localStorage.clear();
+      
+      // 2. Actualizar estado para desmontar componentes
       setUser(null);
       setUserRole(null);
       
-      // Limpiar localStorage
-      localStorage.clear();
-      
-      // Cerrar sesión de Firebase
+      // 3. Cerrar sesión de Firebase
       await signOut(auth);
       
       console.log("Sesión cerrada exitosamente");
+      
+      // 4. Usar una redirección dura para evitar problemas con react-router
+      window.location.href = '/login';
     } catch (error) {
       console.error("Error cerrando sesión:", error);
     } finally {
@@ -132,7 +150,7 @@ function App() {
     }
   };
 
-  // Verificar permisos
+  // Verificar permisos (usando las rutas del segundo código)
   const hasPermission = (route) => {
     if (!userRole) return false;
     
@@ -153,7 +171,7 @@ function App() {
       '/perfil'
     ];
     
-    // Mapear roles de Firestore
+    // Mapear roles con compatibilidad
     if (userRole === 'administrador' || userRole === 'admin') {
       return adminRoutes.includes(route);
     }
@@ -165,7 +183,7 @@ function App() {
     return false;
   };
 
-  // Componente para rutas protegidas
+  // Componente para rutas protegidas (lógica del primer código mejorada)
   const ProtectedRoute = ({ children, path }) => {
     if (loading) {
       return (
@@ -258,7 +276,7 @@ function App() {
           } 
         />
 
-        {/* Rutas protegidas - En orden del diagrama */}
+        {/* Rutas protegidas - Usando las rutas del segundo código */}
         <Route 
           path="/gestion-usuarios" 
           element={
@@ -303,7 +321,8 @@ function App() {
             </ProtectedRoute>
           } 
         />
-         <Route 
+         
+        <Route 
           path="/perfil" 
           element={
             <ProtectedRoute path="/perfil">
@@ -312,7 +331,7 @@ function App() {
           } 
         />
 
-        {/* Rutas por defecto */}
+        {/* Rutas por defecto - Redirigir a /monitoreo en lugar de /gestion-usuarios */}
         <Route 
           path="/" 
           element={

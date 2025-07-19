@@ -1,4 +1,4 @@
-// 🛣️ RUTAS PARA ENVÍO DE EMAILS - Smart Light
+// 🛣️ RUTAS PARA ENVÍO DE EMAILS - VIAJE SEGURO
 // backend/routes/email.js
 
 const express = require('express');

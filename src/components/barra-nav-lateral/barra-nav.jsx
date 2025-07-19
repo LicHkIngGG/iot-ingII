@@ -13,7 +13,8 @@ import {
   X,
   Zap,
   Monitor,
-  MapPin
+  MapPin,
+  User // Icono específico para perfil
 } from 'lucide-react';
 import './barra-nav.css';
 
@@ -95,7 +96,7 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
     }
   }, [isMobile, isVisible]);
 
-  // Configuración de navegación
+  // Configuración de navegación ACTUALIZADA con perfil para todos los roles
   const navOptions = {
     administrador: [
       { 
@@ -131,7 +132,7 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
       { 
         path: '/perfil', 
         label: 'Mi Perfil', 
-        icon: Users,
+        icon: User,
         description: 'Perfil de Usuario'
       }
     ],
@@ -163,11 +164,11 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
       { 
         path: '/perfil', 
         label: 'Mi Perfil', 
-        icon: Users,
+        icon: User,
         description: 'Perfil de Usuario'
       }
     ],
-    // Compatibilidad con roles antiguos
+    // Compatibilidad con roles antiguos - AHORA CON PERFIL
     admin: [
       { 
         path: '/gestion-usuarios', 
@@ -198,6 +199,12 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
         label: 'Reportes', 
         icon: BarChart3,
         description: 'Consumo y eficiencia'
+      },
+      { 
+        path: '/perfil', 
+        label: 'Mi Perfil', 
+        icon: User,
+        description: 'Perfil de Usuario'
       }
     ],
     receptionist: [
@@ -224,6 +231,12 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
         label: 'Reportes', 
         icon: BarChart3,
         description: 'Reportes operacionales'
+      },
+      { 
+        path: '/perfil', 
+        label: 'Mi Perfil', 
+        icon: User,
+        description: 'Perfil de Usuario'
       }
     ]
   };

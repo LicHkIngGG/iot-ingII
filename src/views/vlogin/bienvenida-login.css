@@ -1,0 +1,77 @@
+/* Estilos para la pantalla de Bienvenida Login */
+.bienvenida-login-background {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+    background: linear-gradient(to bottom, #313940, #1FBF92); /* Fondo con el gradiente de la paleta */
+    position: fixed;
+    top: 0;
+    left: 0;
+  }
+  
+  /* Contenedor principal de la bienvenida */
+  .bienvenida-login-container {
+    text-align: center;
+    background-color: rgba(242, 242, 242, 0.95); /* Fondo blanco suave */
+    padding: 40px;
+    border-radius: 15px;
+    width: 360px;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Logo */
+  .logo-container {
+    margin-bottom: 20px;
+  }
+  
+  .logo {
+    width: 120px; /* Ajusta el tamaño del logo */
+    height: auto;
+  }
+  
+  /* Título de bienvenida */
+  .welcome-text {
+    font-size: 30px;
+    font-weight: bold;
+    color: #038C65; /* Verde más oscuro de la paleta */
+    margin-bottom: 30px;
+  }
+  
+  /* Botón para ir a iniciar sesión */
+  .bienvenida-login-button {
+    background-color: #2FE2C1; /* Verde menta claro */
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    width: 100%;
+    margin-top: 10px;
+  }
+  
+  .bienvenida-login-button:hover {
+    background-color: #1FBF92; /* Verde menta brillante */
+    transform: scale(1.05);
+  }
+  
+  /* Responsividad para dispositivos pequeños */
+  @media (max-width: 768px) {
+    .bienvenida-login-container {
+      width: 90%;
+      padding: 35px;
+    }
+  
+    .welcome-text {
+      font-size: 24px;
+    }
+  
+    .bienvenida-login-button {
+      font-size: 16px;
+    }
+  }
+  

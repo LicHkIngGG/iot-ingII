@@ -182,7 +182,7 @@ const GestionAdmTabla = ({
   const traducirRol = (rol) => {
     switch(rol) {
       case 'admin': return 'Administrador';
-      case 'receptionist': return 'Recepcionista';
+      case 'receptionist': return 'Operador';
       default: return rol;
     }
   };

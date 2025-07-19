@@ -1,4 +1,4 @@
-// 🚀 SERVIDOR PRINCIPAL - BACKEND Smart Light
+// 🚀 SERVIDOR PRINCIPAL - BACKEND VIAJE SEGURO
 // backend/server.js
 
 const express = require('express');
@@ -112,7 +112,7 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: 'Backend Smart Light - API funcionando correctamente',
+    message: 'Backend Smart Ligth - API funcionando correctamente',
     version: '1.0.0',
     timestamp: new Date().toISOString(),
     endpoints: [
@@ -180,7 +180,7 @@ const startServer = async () => {
     // Iniciar servidor
     const server = app.listen(PORT, () => {
       console.log('🚀 ====================================');
-      console.log('🚀 BACKEND Smart Light INICIADO');
+      console.log('🚀 BACKEND Smart Ligth INICIADO');
       console.log('🚀 ====================================');
       console.log(`📡 Servidor ejecutándose en puerto: ${PORT}`);
       console.log(`🌐 URL: http://localhost:${PORT}`);

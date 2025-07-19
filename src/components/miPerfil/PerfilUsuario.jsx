@@ -298,7 +298,7 @@ const PerfilUsuario = () => {
           <div className="user-info">
             <h1>{`${usuarioData.nombres} ${usuarioData.apellidoPaterno} ${usuarioData.apellidoMaterno || ''}`}</h1>
             <p className="user-role">
-              {usuarioData.role === 'admin' ? 'Administrador' : 'Recepcionista'}
+              {usuarioData.role === 'admin' ? 'Administrador' : 'Operador'}
             </p>
             <p className="user-email">{usuarioData.email}</p>
           </div>
@@ -475,7 +475,7 @@ const PerfilUsuario = () => {
               <div className="info-item">
                 <label>Tipo de Usuario</label>
                 <p className="form-value readonly">
-                  {usuarioData.role === 'admin' ? 'Administrador' : 'Recepcionista'}
+                  {usuarioData.role === 'admin' ? 'Administrador' : 'Operador'}
                 </p>
                 <small>🔒 No modificable</small>
               </div>
