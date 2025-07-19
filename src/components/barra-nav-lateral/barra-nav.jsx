@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { getAuth, signOut } from 'firebase/auth';
-import { 
-  Activity, 
-  Lightbulb, 
-  Settings, 
-  Users, 
-  BarChart3, 
-  Wifi,
+import {
+  Activity,
+  Lightbulb,
+  Settings,
+  Users,
+  BarChart3,
   LogOut,
   Menu,
   X,
-  Zap,
   Monitor,
   MapPin
 } from 'lucide-react';
@@ -29,16 +27,16 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
     const checkMobile = () => {
       const mobile = window.innerWidth <= 768;
       setIsMobile(mobile);
-      
+     
       // En móviles, el sidebar inicia oculto
       if (mobile && isVisible) {
         setIsVisible(false);
       }
     };
-    
+   
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    
+   
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
@@ -46,7 +44,7 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
   useEffect(() => {
     const role = localStorage.getItem('userRole');
     setUserRole(role);
-    
+   
     // Solo aplicar configuración guardada en desktop
     if (!isMobile) {
       const savedVisibility = localStorage.getItem('sidebarVisible');
@@ -59,10 +57,10 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
   // Aplicar clases al body para controlar el layout
   useEffect(() => {
     const body = document.body;
-    
+   
     // Limpiar clases existentes
     body.classList.remove('sidebar-visible', 'sidebar-hidden');
-    
+   
     // Aplicar clase según estado
     if (isVisible) {
       body.classList.add('sidebar-visible');
@@ -82,8 +80,8 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
       if (isMobile && isVisible) {
         const sidebar = document.querySelector('.sidebar');
         const toggleBtn = document.querySelector('.toggle-btn');
-        
-        if (sidebar && !sidebar.contains(event.target) && !toggleBtn.contains(event.target)) {
+       
+        if (sidebar && !sidebar.contains(event.target) && !toggleBtn?.contains(event.target)) {
           setIsVisible(false);
         }
       }
@@ -98,130 +96,130 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
   // Configuración de navegación
   const navOptions = {
     administrador: [
-      { 
-        path: '/gestion-usuarios', 
-        label: 'Gestión de Personal', 
+      {
+        path: '/gestion-usuarios',
+        label: 'Gestión de Personal',
         icon: Users,
         description: 'Administradores y operadores'
       },
-      { 
-        path: '/monitoreo', 
-        label: 'Monitoreo y Control', 
+      {
+        path: '/monitoreo',
+        label: 'Monitoreo y Control',
         icon: Activity,
         description: 'Monitoreo en tiempo real'
       },
-      { 
-        path: '/gestion-unidades', 
-        label: 'Gestión de Unidades', 
+      {
+        path: '/gestion-unidades',
+        label: 'Gestión de Unidades',
         icon: Settings,
         description: 'Configuración de unidades'
       },
-      { 
-        path: '/mapeo-dispositivos', 
-        label: 'Mapeo de Dispositivos', 
+      {
+        path: '/mapeo-dispositivos',
+        label: 'Mapeo de Dispositivos',
         icon: MapPin,
         description: 'Ubicación y mapeo'
       },
-      { 
-        path: '/reportes', 
-        label: 'Reportes', 
+      {
+        path: '/reportes',
+        label: 'Reportes',
         icon: BarChart3,
         description: 'Consumo y eficiencia'
       },
-      { 
-        path: '/perfil', 
-        label: 'Mi Perfil', 
+      {
+        path: '/perfil',
+        label: 'Mi Perfil',
         icon: Users,
         description: 'Perfil de Usuario'
       }
     ],
     operador: [
-      { 
-        path: '/monitoreo', 
-        label: 'Monitoreo y Control', 
+      {
+        path: '/monitoreo',
+        label: 'Monitoreo y Control',
         icon: Activity,
         description: 'Monitoreo en tiempo real'
       },
-      { 
-        path: '/gestion-unidades', 
-        label: 'Gestión de Unidades', 
+      {
+        path: '/gestion-unidades',
+        label: 'Gestión de Unidades',
         icon: Settings,
         description: 'Configuración de unidades'
       },
-      { 
-        path: '/mapeo-dispositivos', 
-        label: 'Mapeo de Dispositivos', 
+      {
+        path: '/mapeo-dispositivos',
+        label: 'Mapeo de Dispositivos',
         icon: MapPin,
         description: 'Ubicación y mapeo'
       },
-      { 
-        path: '/reportes', 
-        label: 'Reportes', 
+      {
+        path: '/reportes',
+        label: 'Reportes',
         icon: BarChart3,
         description: 'Reportes operacionales'
       },
-      { 
-        path: '/perfil', 
-        label: 'Mi Perfil', 
+      {
+        path: '/perfil',
+        label: 'Mi Perfil',
         icon: Users,
         description: 'Perfil de Usuario'
       }
     ],
     // Compatibilidad con roles antiguos
     admin: [
-      { 
-        path: '/gestion-usuarios', 
-        label: 'Gestión de Personal', 
+      {
+        path: '/gestion-usuarios',
+        label: 'Gestión de Personal',
         icon: Users,
         description: 'Administradores y operadores'
       },
-      { 
-        path: '/monitoreo', 
-        label: 'Monitoreo y Control', 
+      {
+        path: '/monitoreo',
+        label: 'Monitoreo y Control',
         icon: Activity,
         description: 'Monitoreo en tiempo real'
       },
-      { 
-        path: '/gestion-unidades', 
-        label: 'Gestión de Unidades', 
+      {
+        path: '/gestion-unidades',
+        label: 'Gestión de Unidades',
         icon: Settings,
         description: 'Configuración de unidades'
       },
-      { 
-        path: '/mapeo-dispositivos', 
-        label: 'Mapeo de Dispositivos', 
+      {
+        path: '/mapeo-dispositivos',
+        label: 'Mapeo de Dispositivos',
         icon: MapPin,
         description: 'Ubicación y mapeo'
       },
-      { 
-        path: '/reportes', 
-        label: 'Reportes', 
+      {
+        path: '/reportes',
+        label: 'Reportes',
         icon: BarChart3,
         description: 'Consumo y eficiencia'
       }
     ],
     receptionist: [
-      { 
-        path: '/monitoreo', 
-        label: 'Monitoreo y Control', 
+      {
+        path: '/monitoreo',
+        label: 'Monitoreo y Control',
         icon: Activity,
         description: 'Monitoreo en tiempo real'
       },
-      { 
-        path: '/gestion-unidades', 
-        label: 'Gestión de Unidades', 
+      {
+        path: '/gestion-unidades',
+        label: 'Gestión de Unidades',
         icon: Settings,
         description: 'Configuración de unidades'
       },
-      { 
-        path: '/mapeo-dispositivos', 
-        label: 'Mapeo de Dispositivos', 
+      {
+        path: '/mapeo-dispositivos',
+        label: 'Mapeo de Dispositivos',
         icon: MapPin,
         description: 'Ubicación y mapeo'
       },
-      { 
-        path: '/reportes', 
-        label: 'Reportes', 
+      {
+        path: '/reportes',
+        label: 'Reportes',
         icon: BarChart3,
         description: 'Reportes operacionales'
       }
@@ -249,7 +247,7 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
   const toggleSidebar = () => {
     const newVisibility = !isVisible;
     setIsVisible(newVisibility);
-    
+   
     // Solo guardar en localStorage en desktop
     if (!isMobile) {
       localStorage.setItem('sidebarVisible', newVisibility);
@@ -282,19 +280,20 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
     <div className="barra-nav-lateral">
       <div className={`sidebar ${isVisible ? '' : 'hidden'}`}>
         <div className="logo">
-        <div className="logo-container">
-        <div className="logo-icon">
-           <img src="https://i.imgur.com/cXkWtJv.png" alt="Logo" className="logo-light" />
+          <div className="logo-container">
+            <img 
+              src="https://i.imgur.com/cXkWtJv.png" 
+              alt="Smart Light Logo" 
+              className="logo-image"
+            />
+            <div className="logo-text">
+              <h2>Smart Light</h2>
+              <span className="user-role">
+                {getRoleDisplayName(userRole)}
+              </span>
+            </div>
+          </div>
         </div>
-          <div className="logo-text">
-          <p>SMART LIGHT</p>
-          <span className="user-role">
-        {getRoleDisplayName(userRole)}
-            </span>
-        </div>
-      </div>
-       </div>
-
 
         <div className="nav-links">
           {userNavOptions.map((option) => {
@@ -305,7 +304,6 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
                 to={option.path}
                 className={`nav-button ${location.pathname === option.path ? 'active' : ''}`}
                 onClick={handleNavClick}
-                data-discover="true"
               >
                 <div className="nav-button-content">
                   <div className="nav-button-main">
@@ -342,29 +340,19 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
         </div>
       </div>
 
-      <button 
-        id="toggle-btn-unique" 
-        className="toggle-btn" 
+      <button
+        className="toggle-btn"
         onClick={toggleSidebar}
         aria-label={isVisible ? 'Ocultar sidebar' : 'Mostrar sidebar'}
       >
-        {isVisible ? <X className="toggle-icon" /> : <Menu className="toggle-icon" />}
+        {isVisible ? <X size={20} /> : <Menu size={20} />}
       </button>
-      
+     
       {/* Overlay para móviles */}
       {isMobile && isVisible && (
-        <div 
+        <div
           className="sidebar-overlay"
           onClick={() => setIsVisible(false)}
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
-            zIndex: 999
-          }}
         />
       )}
     </div>

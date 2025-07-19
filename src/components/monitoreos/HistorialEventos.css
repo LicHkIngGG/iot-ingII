@@ -1019,3 +1019,316 @@
 .eventos-tabla-container::-webkit-scrollbar-thumb:hover {
   background: var(--historial-text-muted);
 }
+/* Estilos adicionales para las nuevas funcionalidades */
+
+/* Sin postes seleccionados */
+.sin-postes-seleccionados {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  min-height: 400px;
+}
+
+.sin-postes-icono {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  opacity: 0.6;
+  color: var(--historial-text-muted);
+}
+
+.sin-postes-seleccionados h3 {
+  color: var(--historial-text-primary);
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.sin-postes-seleccionados p {
+  color: var(--historial-text-secondary);
+  font-size: 1rem;
+  max-width: 300px;
+}
+
+/* Error del historial */
+.error-historial {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+  min-height: 400px;
+  background: #fef2f2;
+  border: 2px solid #fecaca;
+  border-radius: var(--border-radius-historial);
+}
+
+.error-historial .error-icono {
+  font-size: 4rem;
+  color: var(--historial-danger);
+  margin-bottom: 1.5rem;
+}
+
+.error-historial h3 {
+  color: var(--historial-danger);
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.error-historial p {
+  color: #7f1d1d;
+  margin-bottom: 2rem;
+  font-size: 1rem;
+}
+
+.btn-reintentar {
+  padding: 0.75rem 2rem;
+  background: var(--historial-danger);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.btn-reintentar:hover {
+  background: #b91c1c;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(220, 38, 38, 0.3);
+}
+
+/* Estadísticas ampliadas */
+.eventos-stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+/* Evento origen */
+.evento-origen {
+  font-size: 0.75rem;
+  color: var(--historial-info);
+  background: rgba(14, 165, 233, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(14, 165, 233, 0.3);
+}
+
+/* Tabla origen */
+.tabla-origen {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Footer del historial */
+.historial-footer {
+  background: var(--historial-card-bg);
+  border-top: 1px solid var(--historial-border);
+  padding: 1rem;
+  margin-top: 1rem;
+  border-radius: 0 0 var(--border-radius-historial) var(--border-radius-historial);
+}
+
+.footer-info {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.footer-info span {
+  font-size: 0.8rem;
+  color: var(--historial-text-secondary);
+  padding: 0.25rem 0.75rem;
+  background: white;
+  border-radius: 0.5rem;
+  border: 1px solid var(--historial-border);
+}
+
+/* Debug del historial */
+.debug-historial {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--historial-card-bg);
+  border: 1px solid var(--historial-border);
+  border-radius: var(--border-radius-historial);
+  font-size: 0.8rem;
+}
+
+.debug-historial summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--historial-text-primary);
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background: white;
+  border-radius: 0.5rem;
+  border: 1px solid var(--historial-border);
+}
+
+.debug-historial summary:hover {
+  background: var(--historial-primary-light);
+  border-color: var(--historial-primary);
+  color: var(--historial-primary);
+}
+
+.debug-contenido h5 {
+  margin: 1rem 0 0.5rem 0;
+  color: var(--historial-text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.debug-contenido ul {
+  margin: 0 0 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.debug-contenido li {
+  margin-bottom: 0.25rem;
+  color: var(--historial-text-secondary);
+  font-family: monospace;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.debug-contenido li strong {
+  color: var(--historial-text-primary);
+}
+
+/* Paginación mejorada */
+.paginacion-info {
+  text-align: center;
+  color: var(--historial-text-secondary);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.pagina-actual {
+  font-size: 1rem;
+  color: var(--historial-text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.elementos-info {
+  font-size: 0.75rem;
+  color: var(--historial-text-muted);
+}
+
+/* Responsive para nuevos elementos */
+@media (max-width: 1200px) {
+  .eventos-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .eventos-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .footer-info {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .footer-info span {
+    font-size: 0.75rem;
+  }
+  
+  .debug-historial {
+    font-size: 0.75rem;
+  }
+  
+  .sin-postes-seleccionados,
+  .error-historial {
+    padding: 2rem 1rem;
+  }
+  
+  .sin-postes-icono,
+  .error-historial .error-icono {
+    font-size: 3rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .eventos-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .sin-postes-seleccionados h3,
+  .error-historial h3 {
+    font-size: 1.25rem;
+  }
+  
+  .debug-contenido li {
+    font-size: 0.7rem;
+  }
+  
+  .paginacion {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .btn-paginacion {
+    width: 100%;
+  }
+}
+
+/* Animaciones para eventos sintéticos */
+@keyframes fadeInGenerated {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+    background: rgba(14, 165, 233, 0.1);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+    background: transparent;
+  }
+}
+
+.evento-item[data-sintetico="true"] {
+  animation: fadeInGenerated 0.5s ease-out;
+}
+
+/* Mejoras de accesibilidad */
+.btn-vista:focus,
+.btn-exportar:focus,
+.btn-limpiar-filtros:focus,
+.btn-paginacion:focus {
+  outline: 2px solid var(--historial-primary);
+  outline-offset: 2px;
+}
+
+.input-busqueda:focus,
+.select-filtro:focus,
+.input-fecha:focus {
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.1);
+}
+
+/* Estados hover mejorados */
+.evento-item:hover .evento-icono {
+  transform: scale(1.1);
+}
+
+.timeline-item:hover .timeline-marker {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.eventos-tabla tr:hover {
+  transform: translateX(2px);
+}

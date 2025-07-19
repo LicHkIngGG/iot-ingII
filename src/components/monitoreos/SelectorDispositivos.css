@@ -1448,4 +1448,368 @@
   will-change: width;
 }
 
-/* ===== FIN DEL CSS ===== */
+/* Estilos adicionales para las nuevas funcionalidades */
+
+/* Estado de error */
+.error-estado {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--selector-spacing-xl);
+  text-align: center;
+  min-height: 400px;
+}
+
+.error-icono {
+  font-size: 48px;
+  margin-bottom: var(--selector-spacing-lg);
+  color: var(--selector-danger);
+}
+
+.error-mensaje h3 {
+  color: var(--selector-danger);
+  margin-bottom: var(--selector-spacing-sm);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.error-mensaje p {
+  color: var(--selector-text-secondary);
+  margin-bottom: var(--selector-spacing-lg);
+  font-size: 14px;
+}
+
+.btn-reintentar {
+  padding: var(--selector-spacing-sm) var(--selector-spacing-lg);
+  background: var(--selector-primary);
+  color: white;
+  border: none;
+  border-radius: var(--selector-radius-sm);
+  cursor: pointer;
+  font-weight: 600;
+  transition: var(--selector-transition);
+  font-size: 14px;
+}
+
+.btn-reintentar:hover {
+  background: var(--selector-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--selector-shadow-hover);
+}
+
+/* Estado de carga */
+.cargando-estado {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--selector-spacing-md);
+  padding: var(--selector-spacing-xl);
+  background: var(--selector-surface);
+  border-radius: var(--selector-radius);
+  border: 2px dashed var(--selector-border);
+  margin-bottom: var(--selector-spacing-lg);
+}
+
+.cargando-spinner {
+  font-size: 24px;
+  color: var(--selector-primary);
+  animation: spin 1s linear infinite;
+}
+
+.cargando-estado span {
+  color: var(--selector-text-secondary);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Detalles expandidos mejorados */
+.sensor-detalle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--selector-spacing-sm);
+  padding: var(--selector-spacing-xs);
+  background: white;
+  border-radius: var(--selector-radius-sm);
+  border: 1px solid var(--selector-border-light);
+  margin-bottom: var(--selector-spacing-xs);
+}
+
+.sensor-badge.funcionando {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--selector-success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.sensor-badge.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--selector-danger);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.sensor-valor {
+  font-size: 10px;
+  color: var(--selector-text-muted);
+  font-weight: 500;
+}
+
+/* Estado del dispositivo */
+.estado-dispositivo {
+  margin-top: var(--selector-spacing-sm);
+  padding-top: var(--selector-spacing-sm);
+  border-top: 1px solid var(--selector-border-light);
+}
+
+.estado-titulo {
+  display: block;
+  font-size: 10px;
+  color: var(--selector-text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: var(--selector-spacing-xs);
+}
+
+.estados-lista {
+  display: flex;
+  gap: var(--selector-spacing-xs);
+  flex-wrap: wrap;
+}
+
+.estado-tag {
+  padding: 2px 6px;
+  border-radius: var(--selector-radius-sm);
+  font-size: 9px;
+  font-weight: 600;
+  border: 1px solid;
+}
+
+.estado-tag.conexion.activo {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--selector-success);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+.estado-tag.conexion.inactivo {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--selector-danger);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.estado-tag.led.activo {
+  background: rgba(245, 158, 11, 0.1);
+  color: var(--selector-warning);
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.estado-tag.led.inactivo {
+  background: rgba(107, 114, 128, 0.1);
+  color: var(--selector-text-muted);
+  border-color: rgba(107, 114, 128, 0.3);
+}
+
+.estado-tag.modo.activo {
+  background: rgba(139, 92, 246, 0.1);
+  color: var(--selector-info);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+.estado-tag.modo.inactivo {
+  background: rgba(107, 114, 128, 0.1);
+  color: var(--selector-text-muted);
+  border-color: rgba(107, 114, 128, 0.3);
+}
+
+/* Debug info */
+.debug-info {
+  margin-top: var(--selector-spacing-lg);
+  padding: var(--selector-spacing-md);
+  background: var(--selector-surface);
+  border: 1px solid var(--selector-border);
+  border-radius: var(--selector-radius);
+  font-size: 12px;
+}
+
+.debug-info summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--selector-text-primary);
+  margin-bottom: var(--selector-spacing-sm);
+  padding: var(--selector-spacing-xs);
+  background: white;
+  border-radius: var(--selector-radius-sm);
+  border: 1px solid var(--selector-border);
+  transition: var(--selector-transition);
+}
+
+.debug-info summary:hover {
+  background: var(--selector-primary-light);
+  border-color: var(--selector-primary);
+  color: var(--selector-primary);
+}
+
+.debug-contenido {
+  padding: var(--selector-spacing-sm);
+  background: white;
+  border-radius: var(--selector-radius-sm);
+  border: 1px solid var(--selector-border-light);
+}
+
+.debug-contenido h5 {
+  margin: 0 0 var(--selector-spacing-sm) 0;
+  color: var(--selector-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.debug-contenido ul {
+  margin: 0;
+  padding-left: var(--selector-spacing-md);
+  list-style-type: disc;
+}
+
+.debug-contenido li {
+  margin-bottom: var(--selector-spacing-xs);
+  color: var(--selector-text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.debug-contenido li strong {
+  color: var(--selector-text-primary);
+}
+
+/* Mejoras en el LED indicator */
+.led-indicator.encendido {
+  background: var(--selector-warning);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+  animation: ledPulse 2s infinite;
+}
+
+@keyframes ledPulse {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.7);
+  }
+}
+
+.led-indicator.apagado {
+  background: var(--selector-text-muted);
+  box-shadow: none;
+}
+
+/* Mejoras en indicadores de estado */
+.estado-indicator.online {
+  background: var(--selector-success);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  animation: onlinePulse 3s infinite;
+}
+
+@keyframes onlinePulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
+  }
+}
+
+.estado-indicator.offline {
+  background: var(--selector-text-muted);
+  box-shadow: none;
+}
+
+/* Responsive mejorado para nuevos elementos */
+@media (max-width: 768px) {
+  .sensor-detalle {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--selector-spacing-xs);
+  }
+  
+  .estados-lista {
+    flex-direction: column;
+    gap: var(--selector-spacing-xs);
+  }
+  
+  .debug-info {
+    font-size: 11px;
+  }
+  
+  .debug-contenido li {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .error-estado {
+    padding: var(--selector-spacing-lg);
+  }
+  
+  .error-icono {
+    font-size: 36px;
+  }
+  
+  .cargando-estado {
+    flex-direction: column;
+    padding: var(--selector-spacing-lg);
+  }
+  
+  .detalles-expandidos {
+    padding: var(--selector-spacing-sm);
+  }
+  
+  .sensor-detalle {
+    padding: var(--selector-spacing-xs);
+  }
+}
+
+/* Animaciones de entrada para nuevos elementos */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.detalles-expandidos {
+  animation: slideInUp 0.3s ease-out;
+}
+
+.sensor-detalle {
+  animation: slideInUp 0.2s ease-out;
+}
+
+.sensor-detalle:nth-child(1) { animation-delay: 0.05s; }
+.sensor-detalle:nth-child(2) { animation-delay: 0.1s; }
+.sensor-detalle:nth-child(3) { animation-delay: 0.15s; }
+
+/* Estados hover mejorados */
+.sensor-detalle:hover {
+  transform: translateX(2px);
+  box-shadow: var(--selector-shadow);
+  border-color: var(--selector-primary-light);
+}
+
+.estado-tag:hover {
+  transform: scale(1.05);
+}
+
+/* Accesibilidad mejorada */
+@media (prefers-reduced-motion: reduce) {
+  .led-indicator.encendido,
+  .estado-indicator.online {
+    animation: none;
+  }
+  
+  .detalles-expandidos,
+  .sensor-detalle {
+    animation: none;
+  }
+}

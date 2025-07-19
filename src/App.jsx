@@ -12,7 +12,7 @@ import MonitoreoControl from './components/monitoreos/MonitoreoControl.jsx';
 import GestionUnidades from './components/GestionUnidades/GestionUnidades.jsx'
 import MapaVisualizacion from './components/MapeoDispositivos/MapaVisualizacion.jsx'
 import GestionUsuarios from './components/gestion-usuarios/gestion-usuarios.jsx';
-import Reportes from './components/reportes/reportes.jsx';
+import ReportesPostes from './components/reportes/ReportesPostes.jsx';
 import PerfilUsuario from './components/miPerfil/PerfilUsuario.jsx';
 
 // Layout
@@ -299,7 +299,7 @@ function App() {
           path="/reportes" 
           element={
             <ProtectedRoute path="/reportes">
-              <Reportes />
+              <ReportesPostes />
             </ProtectedRoute>
           } 
         />
