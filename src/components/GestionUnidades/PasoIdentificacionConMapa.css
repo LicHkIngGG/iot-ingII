@@ -1,0 +1,639 @@
+/* src/components/GestionUnidades/components/AsistenteConfiguracion/components/PasoIdentificacionConMapa.css */
+
+/* ========== CONTENEDOR PRINCIPAL ========== */
+.paso-identificacion-mapa {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 20px;
+}
+
+.paso-header {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.paso-header h3 {
+  margin: 0 0 8px 0;
+  color: #1e293b;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.paso-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ========== DISPOSITIVO DETECTADO ========== */
+.dispositivo-detectado {
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  border: 1px solid #bae6fd;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.detectado-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.detectado-icon {
+  font-size: 24px;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+}
+
+.detectado-info strong {
+  color: #1e293b;
+  font-size: 16px;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.detectado-info p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+/* ========== FORMULARIO ========== */
+.form-identificacion {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.input-form,
+.select-form,
+.textarea-form {
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #374151;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.input-form:focus,
+.select-form:focus,
+.textarea-form:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.select-form {
+  cursor: pointer;
+}
+
+.textarea-form {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* ========== GRUPO DE UBICACIÓN ========== */
+.ubicacion-input-group {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.ubicacion-input {
+  flex: 1;
+}
+
+.btn-mapa {
+  background: linear-gradient(135deg, #059669, #047857);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 16px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  min-width: 50px;
+}
+
+.btn-mapa:hover {
+  background: linear-gradient(135deg, #047857, #065f46);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(5, 150, 105, 0.3);
+}
+
+/* ========== UBICACIÓN CONFIRMADA ========== */
+.ubicacion-confirmada {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+}
+
+.confirmada-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.confirmada-icon {
+  font-size: 18px;
+  color: #16a34a;
+}
+
+.confirmada-datos strong {
+  color: #166534;
+  font-size: 14px;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.confirmada-datos p {
+  margin: 0;
+  color: #15803d;
+  font-size: 12px;
+}
+
+.btn-limpiar-ubicacion {
+  background: none;
+  border: none;
+  color: #dc2626;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-limpiar-ubicacion:hover {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+/* ========== MODAL DEL MAPA ========== */
+.mapa-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.mapa-modal {
+  background: white;
+  border-radius: 16px;
+  width: 95%;
+  max-width: 1200px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.mapa-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+}
+
+.mapa-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.btn-cerrar-mapa {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-cerrar-mapa:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.mapa-modal-contenido {
+  padding: 0;
+  max-height: calc(90vh - 140px);
+  overflow-y: auto;
+}
+
+.mapa-modal-acciones {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.btn-cancelar-mapa {
+  flex: 1;
+  padding: 12px 16px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-cancelar-mapa:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+.btn-manual-mapa {
+  flex: 1;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-manual-mapa:hover {
+  background: linear-gradient(135deg, #4f46e5, #4338ca);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(99, 102, 241, 0.3);
+}
+
+/* ========== AYUDA ========== */
+.ayuda-identificacion {
+  background: #fffbeb;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.ayuda-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.ayuda-icon {
+  font-size: 20px;
+  color: #d97706;
+  flex-shrink: 0;
+  background: #fef3c7;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ayuda-contenido strong {
+  color: #92400e;
+  font-size: 14px;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.ayuda-contenido p {
+  margin: 0;
+  color: #a16207;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+  .paso-identificacion-mapa {
+    padding: 16px;
+    gap: 20px;
+  }
+  
+  .form-identificacion {
+    padding: 20px;
+  }
+  
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .mapa-modal {
+    width: 98%;
+    max-height: 95vh;
+  }
+  
+  .mapa-modal-header {
+    padding: 16px 20px;
+  }
+  
+  .mapa-modal-header h3 {
+    font-size: 16px;
+  }
+  
+  .mapa-modal-acciones {
+    padding: 12px 20px;
+    flex-direction: column;
+  }
+  
+  .ubicacion-input-group {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .btn-mapa {
+    align-self: stretch;
+    min-width: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .paso-identificacion-mapa {
+    padding: 12px;
+  }
+  
+  .paso-header h3 {
+    font-size: 18px;
+  }
+  
+  .form-identificacion {
+    padding: 16px;
+  }
+  
+  .dispositivo-detectado {
+    padding: 12px;
+  }
+  
+  .detectado-info {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+  }
+  
+  .detectado-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+  
+  .mapa-modal {
+    width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  
+  .mapa-modal-contenido {
+    max-height: calc(100vh - 120px);
+  }
+  
+  .ayuda-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
+  }
+  
+  .ayuda-icon {
+    align-self: center;
+  }
+}
+
+/* ========== ESTADOS ESPECIALES ========== */
+.form-group.error .input-form,
+.form-group.error .select-form,
+.form-group.error .textarea-form {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.form-group.success .input-form,
+.form-group.success .select-form,
+.form-group.success .textarea-form {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.form-group.loading .input-form,
+.form-group.loading .select-form,
+.form-group.loading .textarea-form {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.paso-identificacion-mapa.completado {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  padding: 24px;
+}
+
+/* ========== ANIMACIONES ========== */
+@keyframes pulseSuccess {
+  0%, 100% {
+    background: #f0fdf4;
+  }
+  50% {
+    background: #dcfce7;
+  }
+}
+
+.ubicacion-confirmada {
+  animation: pulseSuccess 2s ease-in-out;
+}
+
+@keyframes shakeError {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px);
+  }
+  75% {
+    transform: translateX(5px);
+  }
+}
+
+.form-group.error {
+  animation: shakeError 0.5s ease-in-out;
+}
+
+/* ========== ACCESIBILIDAD ========== */
+@media (prefers-reduced-motion: reduce) {
+  .mapa-modal-overlay,
+  .mapa-modal,
+  .ubicacion-confirmada,
+  .form-group.error {
+    animation: none;
+  }
+  
+  .btn-mapa:hover,
+  .btn-manual-mapa:hover {
+    transform: none;
+  }
+}
+
+/* ========== FOCUS VISIBLE ========== */
+.btn-mapa:focus-visible,
+.btn-cancelar-mapa:focus-visible,
+.btn-manual-mapa:focus-visible,
+.btn-cerrar-mapa:focus-visible,
+.btn-limpiar-ubicacion:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.input-form:focus-visible,
+.select-form:focus-visible,
+.textarea-form:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* ========== UTILIDADES ========== */
+.visualmente-oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.texto-truncado {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.flex-centrado {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ========== VALIDACIÓN VISUAL ========== */
+.campo-requerido label::after {
+  content: " *";
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.mensaje-error {
+  color: #ef4444;
+  font-size: 12px;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mensaje-error::before {
+  content: "⚠️";
+  font-size: 12px;
+}
+
+.mensaje-exito {
+  color: #16a34a;
+  font-size: 12px;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mensaje-exito::before {
+  content: "✅";
+  font-size: 12px;
+}
+
+/* ========== TRANSICIONES SUAVES ========== */
+* {
+  transition: border-color 0.3s ease, 
+              box-shadow 0.3s ease, 
+              background-color 0.3s ease, 
+              color 0.3s ease, 
+              transform 0.3s ease;
+}

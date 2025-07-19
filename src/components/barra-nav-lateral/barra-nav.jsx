@@ -282,18 +282,19 @@ const BarraNavLateral = ({ handleLogout: appHandleLogout }) => {
     <div className="barra-nav-lateral">
       <div className={`sidebar ${isVisible ? '' : 'hidden'}`}>
         <div className="logo">
-          <div className="logo-container">
-            <div className="logo-icon">
-              <Lightbulb className="logo-light" />
-            </div>
-            <div className="logo-text">
-              <p>SMART LIGHT</p>
-              <span className="user-role">
-                {getRoleDisplayName(userRole)}
-              </span>
-            </div>
-          </div>
+        <div className="logo-container">
+        <div className="logo-icon">
+           <img src="https://i.imgur.com/cXkWtJv.png" alt="Logo" className="logo-light" />
         </div>
+          <div className="logo-text">
+          <p>SMART LIGHT</p>
+          <span className="user-role">
+        {getRoleDisplayName(userRole)}
+            </span>
+        </div>
+      </div>
+       </div>
+
 
         <div className="nav-links">
           {userNavOptions.map((option) => {

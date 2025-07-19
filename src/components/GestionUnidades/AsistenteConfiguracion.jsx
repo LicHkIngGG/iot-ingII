@@ -4,6 +4,7 @@ import { firebaseService } from '../../services/firebaseService';
 import { detectESP32InRange, testESP32Connection, createDeviceProfile } from '../../utils/deviceDetection';
 import { HttpManager } from '../../utils/http';
 import './AsistenteConfiguracion.css';
+import PasoIdentificacionConMapa from './PasoIdentificacionConMapa';
 
 const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
   const [pasoActual, setPasoActual] = useState(1);
@@ -11,18 +12,19 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
   const [progreso, setProgreso] = useState(0);
+  const [progresoDeteccion, setProgresoDeteccion] = useState(0);
 
   const pasos = [
     { numero: 1, titulo: 'Detección', icono: '🔍', descripcion: 'Buscar dispositivo ESP32' },
-    { numero: 2, titulo: 'Identificación', icono: '🏷️', descripcion: 'Configurar información básica' },
-    { numero: 3, titulo: 'Red', icono: '🌐', descripcion: 'Configurar conexión de red' },
-    { numero: 4, titulo: 'Sensores', icono: '🔬', descripcion: 'Configurar sensores' },
+    { numero: 2, titulo: 'Identificación', icono: '🏷️', descripcion: 'Configurar información y ubicación' },
+    { numero: 3, titulo: 'Sensores', icono: '🔬', descripcion: 'Configurar sensores detectados' },
+    { numero: 4, titulo: 'Automatización', icono: '🤖', descripcion: 'Configurar modos inteligentes' },
     { numero: 5, titulo: 'Confirmación', icono: '✅', descripcion: 'Revisar y guardar' }
   ];
 
   // Estado para cada paso
   const [deteccion, setDeteccion] = useState({
-    metodo: 'automatico', // automatico, manual
+    metodo: 'automatico',
     rangoIP: { base: '192.168.1.', inicio: 100, fin: 200 },
     ipManual: '',
     dispositivosEncontrados: [],
@@ -33,21 +35,51 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
     nombre: '',
     ubicacion: '',
     zona: '',
-    descripcion: ''
-  });
-
-  const [configuracionRed, setConfiguracionRed] = useState({
-    ipNueva: '',
-    puerto: 80,
-    gateway: '192.168.1.1',
-    subnet: '255.255.255.0',
-    dns: '8.8.8.8'
+    descripcion: '',
+    coordenadas: null
   });
 
   const [configuracionSensores, setConfiguracionSensores] = useState({
-    ldr: { habilitado: true, umbralEncendido: 100, umbralApagado: 300 },
-    pir: { habilitado: true, sensibilidad: 'media', tiempoActivacion: 30 },
-    acs712: { habilitado: true, modelo: '20A', alertaMaxima: 20 }
+    ldr: { 
+      habilitado: true, 
+      thresholdDaylight: 400,
+      thresholdTwilight: 200, 
+      thresholdNight: 100,
+      calibrationFactor: 1.0
+    },
+    pir: { 
+      habilitado: true, 
+      sensitivity: 2,
+      activationTime: 45,
+      extendedTime: 180
+    },
+    acs712: { 
+      habilitado: true, 
+      modelo: '20A', 
+      maxAlert: 20.0,
+      is5A: false
+    }
+  });
+
+  const [configuracionAutomatizacion, setConfiguracionAutomatizacion] = useState({
+    enabled: true,
+    operatingMode: 4, // AUTO_SMART por defecto
+    energySaving: {
+      enabled: true,
+      nightDimming: true,
+      motionOnlyMode: false,
+      nightDimmingPercent: 40
+    },
+    smartLDR: {
+      enabled: true,
+      adaptiveThresholds: true
+    },
+    smartPIR: {
+      enabled: true,
+      extendedDetection: true,
+      intensityBoost: true
+    },
+    adaptiveLearning: true
   });
 
   // Calcular progreso
@@ -56,12 +88,166 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
     setProgreso(nuevoProgreso);
   }, [pasoActual]);
 
-  // PASO 1: Detección de dispositivo
+  // FUNCIÓN AUXILIAR: Test de conexión optimizado para nuevo firmware
+  const testESP32ConnectionCORS = async (ip, puerto = 80, timeout = 5000) => {
+    try {
+      console.log(`🧪 Probando conexión CORS a ${ip}:${puerto}`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+      
+      const startTime = Date.now();
+      
+      // Probar primero endpoint de status avanzado
+      const response = await fetch(`http://${ip}:${puerto}/api/status`, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      const responseTime = Date.now() - startTime;
+      
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Verificar si es nuestro firmware v4.0
+        const firmwareVersion = data.firmwareVersion || '1.0.0';
+        const deviceType = data.tipo || data.deviceType || 'ESP32';
+        
+        return {
+          success: true,
+          data: data,
+          responseTime: responseTime,
+          status: response.status,
+          ip: ip,
+          puerto: puerto,
+          isAdvancedFirmware: firmwareVersion.startsWith('4.'),
+          deviceType: deviceType
+        };
+      } else {
+        return {
+          success: false,
+          error: `HTTP ${response.status}: ${response.statusText}`,
+          responseTime: responseTime,
+          status: response.status,
+          ip: ip,
+          puerto: puerto
+        };
+      }
+    } catch (error) {
+      let errorMessage = error.message;
+      
+      if (error.name === 'AbortError') {
+        errorMessage = 'Timeout: El ESP32 no respondió a tiempo';
+      } else if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        errorMessage = 'Error CORS o conectividad: Verificar ESP32 y configuración';
+      }
+      
+      return {
+        success: false,
+        error: errorMessage,
+        responseTime: null,
+        status: null,
+        ip: ip,
+        puerto: puerto
+      };
+    }
+  };
+
+  // FUNCIÓN: Detección automática con progreso visual
+  const detectESP32InRangeCORS = async (baseIP, startRange, endRange, callbacks = {}) => {
+    const { onProgress, onDeviceFound } = callbacks;
+    const devicesFound = [];
+    const total = endRange - startRange + 1;
+    let completed = 0;
+    
+    console.log(`🔍 Iniciando escaneo CORS: ${baseIP}${startRange}-${endRange}`);
+    
+    // Procesar en lotes optimizados
+    const batchSize = 8; // Aumentado para mejor rendimiento
+    for (let start = startRange; start <= endRange; start += batchSize) {
+      const batch = [];
+      const end = Math.min(start + batchSize - 1, endRange);
+      
+      // Crear promesas para el lote actual
+      for (let i = start; i <= end; i++) {
+        const testIP = baseIP + i;
+        batch.push(
+          testESP32ConnectionCORS(testIP, 80, 2500) // Timeout reducido
+            .then(result => {
+              completed++;
+              const percentage = Math.round((completed / total) * 100);
+              
+              setProgresoDeteccion(percentage);
+              
+              if (onProgress) {
+                onProgress({
+                  current: completed,
+                  total: total,
+                  percentage: percentage,
+                  ip: testIP
+                });
+              }
+              
+              if (result.success) {
+                console.log(`✅ ESP32 encontrado en ${testIP} - Firmware: ${result.data?.firmwareVersion || 'Unknown'}`);
+                devicesFound.push(result);
+                
+                if (onDeviceFound) {
+                  onDeviceFound(result);
+                }
+              }
+              
+              return result;
+            })
+            .catch(error => {
+              completed++;
+              const percentage = Math.round((completed / total) * 100);
+              
+              setProgresoDeteccion(percentage);
+              
+              if (onProgress) {
+                onProgress({
+                  current: completed,
+                  total: total,
+                  percentage: percentage,
+                  ip: testIP,
+                  error: error.message
+                });
+              }
+              
+              return { success: false, ip: testIP, error: error.message };
+            })
+        );
+      }
+      
+      // Esperar a que termine el lote actual
+      await Promise.all(batch);
+      
+      // Pausa más corta entre lotes
+      if (end < endRange) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    }
+    
+    return {
+      success: true,
+      devicesFound: devicesFound,
+      totalScanned: total,
+      foundCount: devicesFound.length
+    };
+  };
+
+  // PASO 1: Detección de dispositivo MEJORADO
   const renderPasoDeteccion = () => (
     <div className="paso-contenido">
       <div className="paso-header">
         <h3>🔍 Detectar Dispositivo ESP32</h3>
-        <p>Encuentra tu dispositivo en la red local</p>
+        <p>Encuentra tu dispositivo de luminaria inteligente en la red local</p>
       </div>
 
       <div className="metodo-selector">
@@ -77,7 +263,8 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
             <span className="radio-custom"></span>
             <div className="radio-info">
               <strong>🔍 Detección Automática</strong>
-              <p>Escanea un rango de IPs buscando dispositivos ESP32</p>
+              <p>Escanea automáticamente la red buscando dispositivos compatibles</p>
+              <small>Recomendado para la mayoría de casos</small>
             </div>
           </label>
 
@@ -92,7 +279,8 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
             <span className="radio-custom"></span>
             <div className="radio-info">
               <strong>🎯 IP Manual</strong>
-              <p>Introduce la IP si ya la conoces</p>
+              <p>Introduce la IP si ya conoces la dirección del dispositivo</p>
+              <small>Para configuraciones avanzadas</small>
             </div>
           </label>
         </div>
@@ -100,10 +288,10 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
 
       {deteccion.metodo === 'automatico' && (
         <div className="config-automatica">
-          <h4>Configuración de Escaneo</h4>
+          <h4>⚙️ Configuración de Escaneo</h4>
           <div className="config-grid">
             <div className="config-item">
-              <label>Rango de IP:</label>
+              <label>Rango de IP a escanear:</label>
               <div className="ip-range-input">
                 <input
                   type="text"
@@ -113,6 +301,7 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
                     rangoIP: { ...prev.rangoIP, base: e.target.value }
                   }))}
                   className="input-ip-base"
+                  placeholder="192.168.1."
                 />
                 <input
                   type="number"
@@ -138,22 +327,39 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
                   max="254"
                 />
               </div>
+              <small>Se escaneará desde {deteccion.rangoIP.base}{deteccion.rangoIP.inicio} hasta {deteccion.rangoIP.base}{deteccion.rangoIP.fin}</small>
             </div>
           </div>
+
+          {cargando && (
+            <div className="progreso-escaneo">
+              <div className="progreso-header">
+                <span>🔄 Escaneando red...</span>
+                <span>{progresoDeteccion}%</span>
+              </div>
+              <div className="progreso-barra-escaneo">
+                <div 
+                  className="progreso-fill-escaneo"
+                  style={{ width: `${progresoDeteccion}%` }}
+                ></div>
+              </div>
+              <small>Probando {deteccion.rangoIP.base}{Math.floor(progresoDeteccion * (deteccion.rangoIP.fin - deteccion.rangoIP.inicio + 1) / 100) + deteccion.rangoIP.inicio}</small>
+            </div>
+          )}
 
           <button
             className="btn-detectar primary"
             onClick={iniciarDeteccionAutomatica}
             disabled={cargando}
           >
-            {cargando ? '🔄 Escaneando...' : '🔍 Iniciar Escaneo'}
+            {cargando ? '🔄 Escaneando...' : '🔍 Iniciar Escaneo Automático'}
           </button>
         </div>
       )}
 
       {deteccion.metodo === 'manual' && (
         <div className="config-manual">
-          <h4>IP del Dispositivo</h4>
+          <h4>🎯 Dirección IP Manual</h4>
           <div className="ip-manual-input">
             <input
               type="text"
@@ -161,19 +367,21 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
               value={deteccion.ipManual}
               onChange={(e) => setDeteccion(prev => ({ ...prev, ipManual: e.target.value }))}
               className="input-ip-manual"
+              pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
             />
             <button
               className="btn-probar"
               onClick={probarIPManual}
               disabled={cargando || !deteccion.ipManual}
             >
-              {cargando ? '🔄' : '🎯'} Probar
+              {cargando ? '🔄' : '🎯'} Probar Conexión
             </button>
           </div>
+          <small>Introduce la dirección IP exacta del dispositivo ESP32</small>
         </div>
       )}
 
-      {/* Dispositivos encontrados */}
+      {/* Dispositivos encontrados MEJORADO */}
       {deteccion.dispositivosEncontrados.length > 0 && (
         <div className="dispositivos-encontrados">
           <h4>📱 Dispositivos Encontrados ({deteccion.dispositivosEncontrados.length})</h4>
@@ -186,12 +394,43 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
               >
                 <div className="dispositivo-info">
                   <div className="dispositivo-header">
-                    <span className="dispositivo-icon">📱</span>
-                    <span className="dispositivo-id">{dispositivo.data?.deviceId || 'ESP32'}</span>
+                    <span className="dispositivo-icon">
+                      {dispositivo.isAdvancedFirmware ? '🌟' : '📱'}
+                    </span>
+                    <div className="dispositivo-detalles-header">
+                      <span className="dispositivo-id">
+                        {dispositivo.data?.deviceId || `ESP32_${dispositivo.ip.replace(/\./g, '')}`}
+                      </span>
+                      {dispositivo.isAdvancedFirmware && (
+                        <span className="badge-advanced">v4.0 Inteligente</span>
+                      )}
+                    </div>
                   </div>
                   <div className="dispositivo-detalles">
-                    <span className="dispositivo-ip">{dispositivo.ip}:{dispositivo.puerto}</span>
-                    <span className="dispositivo-firmware">v{dispositivo.data?.firmwareVersion || '1.0.0'}</span>
+                    <div className="detalle-fila">
+                      <span className="detalle-label">IP:</span>
+                      <span className="detalle-valor">{dispositivo.ip}:{dispositivo.puerto}</span>
+                    </div>
+                    <div className="detalle-fila">
+                      <span className="detalle-label">Firmware:</span>
+                      <span className="detalle-valor">v{dispositivo.data?.firmwareVersion || '1.0.0'}</span>
+                    </div>
+                    <div className="detalle-fila">
+                      <span className="detalle-label">Tipo:</span>
+                      <span className="detalle-valor">{dispositivo.deviceType}</span>
+                    </div>
+                    <div className="detalle-fila">
+                      <span className="detalle-label">Respuesta:</span>
+                      <span className="detalle-valor">{dispositivo.responseTime}ms</span>
+                    </div>
+                    {dispositivo.data?.configured && (
+                      <div className="detalle-fila">
+                        <span className="detalle-label">Estado:</span>
+                        <span className="detalle-valor estado-configurado">
+                          {dispositivo.data.configured ? '✅ Configurado' : '⚠️ Sin configurar'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 {deteccion.dispositivoSeleccionado?.ip === dispositivo.ip && (
@@ -206,182 +445,64 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
       {error && (
         <div className="error-message">
           <span className="error-icon">❌</span>
-          <span>{error}</span>
+          <div className="error-content">
+            <strong>Error de detección</strong>
+            <p>{error}</p>
+          </div>
         </div>
       )}
     </div>
   );
 
-  // PASO 2: Identificación
+  // PASO 2: Identificación con mapa (sin cambios, ya está optimizado)
   const renderPasoIdentificacion = () => (
-    <div className="paso-contenido">
-      <div className="paso-header">
-        <h3>🏷️ Información del Dispositivo</h3>
-        <p>Configura los datos básicos del dispositivo</p>
-      </div>
-
-      <div className="dispositivo-detectado">
-        <div className="detectado-info">
-          <span className="detectado-icon">📱</span>
-          <div>
-            <strong>{datosDispositivo.deviceId || 'ESP32'}</strong>
-            <p>IP: {datosDispositivo.ip} | Firmware: v{datosDispositivo.firmwareVersion || '1.0.0'}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="form-identificacion">
-        <div className="form-group">
-          <label>Nombre del Dispositivo *</label>
-          <input
-            type="text"
-            value={identificacion.nombre}
-            onChange={(e) => setIdentificacion(prev => ({ ...prev, nombre: e.target.value }))}
-            placeholder="Ej: Poste Villa Adela Norte 001"
-            className="input-form"
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Ubicación *</label>
-          <input
-            type="text"
-            value={identificacion.ubicacion}
-            onChange={(e) => setIdentificacion(prev => ({ ...prev, ubicacion: e.target.value }))}
-            placeholder="Ej: Calle Murillo 456, Villa Adela"
-            className="input-form"
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Zona</label>
-          <select
-            value={identificacion.zona}
-            onChange={(e) => setIdentificacion(prev => ({ ...prev, zona: e.target.value }))}
-            className="select-form"
-          >
-            <option value="">Seleccionar zona</option>
-            <option value="Norte">Norte</option>
-            <option value="Sur">Sur</option>
-            <option value="Centro">Centro</option>
-            <option value="Este">Este</option>
-            <option value="Oeste">Oeste</option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label>Descripción</label>
-          <textarea
-            value={identificacion.descripcion}
-            onChange={(e) => setIdentificacion(prev => ({ ...prev, descripcion: e.target.value }))}
-            placeholder="Descripción adicional del dispositivo..."
-            className="textarea-form"
-            rows={3}
-          />
-        </div>
-      </div>
-    </div>
+    <PasoIdentificacionConMapa
+      datosDispositivo={datosDispositivo}
+      identificacion={identificacion}
+      setIdentificacion={setIdentificacion}
+      onUbicacionConfirmada={(ubicacion) => {
+        console.log('🎯 Ubicación confirmada desde mapa:', ubicacion);
+      }}
+    />
   );
 
-  // PASO 3: Configuración de Red
-  const renderPasoRed = () => (
-    <div className="paso-contenido">
-      <div className="paso-header">
-        <h3>🌐 Configuración de Red</h3>
-        <p>Ajusta los parámetros de conexión del dispositivo</p>
-      </div>
-
-      <div className="red-actual">
-        <h4>📍 Configuración Actual</h4>
-        <div className="config-actual">
-          <div className="config-item-actual">
-            <span className="config-label">IP Actual:</span>
-            <span className="config-valor">{datosDispositivo.ip}</span>
-          </div>
-          <div className="config-item-actual">
-            <span className="config-label">Puerto:</span>
-            <span className="config-valor">{datosDispositivo.puerto || 80}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="red-nueva">
-        <h4>🎯 Nueva Configuración</h4>
-        <div className="form-red">
-          <div className="form-row">
-            <div className="form-group">
-              <label>Nueva IP</label>
-              <input
-                type="text"
-                value={configuracionRed.ipNueva}
-                onChange={(e) => setConfiguracionRed(prev => ({ ...prev, ipNueva: e.target.value }))}
-                placeholder={datosDispositivo.ip}
-                className="input-form"
-              />
-              <small>Dejar vacío para mantener la IP actual</small>
-            </div>
-
-            <div className="form-group">
-              <label>Puerto</label>
-              <input
-                type="number"
-                value={configuracionRed.puerto}
-                onChange={(e) => setConfiguracionRed(prev => ({ ...prev, puerto: parseInt(e.target.value) }))}
-                className="input-form"
-                min="1"
-                max="65535"
-              />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label>Gateway</label>
-              <input
-                type="text"
-                value={configuracionRed.gateway}
-                onChange={(e) => setConfiguracionRed(prev => ({ ...prev, gateway: e.target.value }))}
-                className="input-form"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Máscara de Subred</label>
-              <input
-                type="text"
-                value={configuracionRed.subnet}
-                onChange={(e) => setConfiguracionRed(prev => ({ ...prev, subnet: e.target.value }))}
-                className="input-form"
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>DNS</label>
-            <input
-              type="text"
-              value={configuracionRed.dns}
-              onChange={(e) => setConfiguracionRed(prev => ({ ...prev, dns: e.target.value }))}
-              className="input-form"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  // PASO 4: Configuración de Sensores
+  // PASO 3: Configuración de Sensores MEJORADO
   const renderPasoSensores = () => (
     <div className="paso-contenido">
       <div className="paso-header">
         <h3>🔬 Configuración de Sensores</h3>
-        <p>Configura los sensores detectados en el dispositivo</p>
+        <p>Ajusta los sensores detectados automáticamente en tu dispositivo</p>
       </div>
 
+      {/* Mostrar sensores detectados */}
+      {datosDispositivo.sensores && (
+        <div className="sensores-detectados">
+          <h4>✅ Sensores Detectados Automáticamente</h4>
+          <div className="sensores-detectados-lista">
+            {datosDispositivo.sensores.ldr && (
+              <div className="sensor-detectado">
+                <span className="sensor-icon">💡</span>
+                <span>LDR (Sensor de Luz) - {datosDispositivo.sensores.ldr.model || 'Fotoresistor'}</span>
+              </div>
+            )}
+            {datosDispositivo.sensores.pir && (
+              <div className="sensor-detectado">
+                <span className="sensor-icon">👁️</span>
+                <span>PIR (Sensor de Movimiento) - {datosDispositivo.sensores.pir.model || 'HC-SR501'}</span>
+              </div>
+            )}
+            {datosDispositivo.sensores.acs712 && (
+              <div className="sensor-detectado">
+                <span className="sensor-icon">⚡</span>
+                <span>ACS712 (Sensor de Corriente) - {datosDispositivo.sensores.acs712.model || 'ACS712-20A'}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="sensores-config">
-        {/* LDR */}
+        {/* LDR MEJORADO */}
         <div className="sensor-group">
           <div className="sensor-header">
             <label className="checkbox-label">
@@ -394,7 +515,10 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
                 }))}
               />
               <span className="checkbox-custom"></span>
-              <span className="sensor-titulo">💡 Sensor LDR (Luminosidad)</span>
+              <div className="sensor-titulo-info">
+                <span className="sensor-titulo">💡 Sensor LDR (Luminosidad)</span>
+                <small>Detecta la luz ambiente para encendido/apagado automático</small>
+              </div>
             </label>
           </div>
           
@@ -402,42 +526,59 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
             <div className="sensor-config">
               <div className="config-row">
                 <div className="config-item">
-                  <label>Umbral Encendido (lux)</label>
+                  <label>Umbral Día (no encender)</label>
                   <input
                     type="number"
-                    value={configuracionSensores.ldr.umbralEncendido}
+                    value={configuracionSensores.ldr.thresholdDaylight}
                     onChange={(e) => setConfiguracionSensores(prev => ({
                       ...prev,
-                      ldr: { ...prev.ldr, umbralEncendido: parseInt(e.target.value) }
+                      ldr: { ...prev.ldr, thresholdDaylight: parseInt(e.target.value) }
                     }))}
                     className="input-config"
                     min="0"
                     max="1000"
                   />
+                  <small>Lux mínimos para considerar "día"</small>
                 </div>
                 <div className="config-item">
-                  <label>Umbral Apagado (lux)</label>
+                  <label>Umbral Crepúsculo (dimmer)</label>
                   <input
                     type="number"
-                    value={configuracionSensores.ldr.umbralApagado}
+                    value={configuracionSensores.ldr.thresholdTwilight}
                     onChange={(e) => setConfiguracionSensores(prev => ({
                       ...prev,
-                      ldr: { ...prev.ldr, umbralApagado: parseInt(e.target.value) }
+                      ldr: { ...prev.ldr, thresholdTwilight: parseInt(e.target.value) }
                     }))}
                     className="input-config"
                     min="0"
                     max="1000"
                   />
+                  <small>Lux para encendido atenuado</small>
+                </div>
+                <div className="config-item">
+                  <label>Umbral Noche (completo)</label>
+                  <input
+                    type="number"
+                    value={configuracionSensores.ldr.thresholdNight}
+                    onChange={(e) => setConfiguracionSensores(prev => ({
+                      ...prev,
+                      ldr: { ...prev.ldr, thresholdNight: parseInt(e.target.value) }
+                    }))}
+                    className="input-config"
+                    min="0"
+                    max="1000"
+                  />
+                  <small>Lux para encendido completo</small>
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* PIR */}
+        {/* PIR MEJORADO */}
         <div className="sensor-group">
           <div className="sensor-header">
-            <label className="checkbox-label">// Continuación del renderPasoSensores - PIR
+            <label className="checkbox-label">
               <input
                 type="checkbox"
                 checked={configuracionSensores.pir.habilitado}
@@ -447,7 +588,10 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
                 }))}
               />
               <span className="checkbox-custom"></span>
-              <span className="sensor-titulo">👁️ Sensor PIR (Movimiento)</span>
+              <div className="sensor-titulo-info">
+                <span className="sensor-titulo">👁️ Sensor PIR (Movimiento)</span>
+                <small>Detecta presencia para encendido inteligente</small>
+              </div>
             </label>
           </div>
           
@@ -457,38 +601,55 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
                 <div className="config-item">
                   <label>Sensibilidad</label>
                   <select
-                    value={configuracionSensores.pir.sensibilidad}
+                    value={configuracionSensores.pir.sensitivity}
                     onChange={(e) => setConfiguracionSensores(prev => ({
                       ...prev,
-                      pir: { ...prev.pir, sensibilidad: e.target.value }
+                      pir: { ...prev.pir, sensitivity: parseInt(e.target.value) }
                     }))}
                     className="select-config"
                   >
-                    <option value="baja">Baja</option>
-                    <option value="media">Media</option>
-                    <option value="alta">Alta</option>
+                    <option value={1}>Baja</option>
+                    <option value={2}>Media</option>
+                    <option value={3}>Alta</option>
                   </select>
+                  <small>Nivel de sensibilidad del sensor</small>
                 </div>
                 <div className="config-item">
                   <label>Tiempo Activación (seg)</label>
                   <input
                     type="number"
-                    value={configuracionSensores.pir.tiempoActivacion}
+                    value={configuracionSensores.pir.activationTime}
                     onChange={(e) => setConfiguracionSensores(prev => ({
                       ...prev,
-                      pir: { ...prev.pir, tiempoActivacion: parseInt(e.target.value) }
+                      pir: { ...prev.pir, activationTime: parseInt(e.target.value) }
                     }))}
                     className="input-config"
                     min="5"
                     max="300"
                   />
+                  <small>Tiempo base de encendido</small>
+                </div>
+                <div className="config-item">
+                  <label>Tiempo Extendido (seg)</label>
+                  <input
+                    type="number"
+                    value={configuracionSensores.pir.extendedTime}
+                    onChange={(e) => setConfiguracionSensores(prev => ({
+                      ...prev,
+                      pir: { ...prev.pir, extendedTime: parseInt(e.target.value) }
+                    }))}
+                    className="input-config"
+                    min="60"
+                    max="600"
+                  />
+                  <small>Tiempo si hay actividad continua</small>
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* ACS712 */}
+        {/* ACS712 MEJORADO */}
         <div className="sensor-group">
           <div className="sensor-header">
             <label className="checkbox-label">
@@ -501,7 +662,10 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
                 }))}
               />
               <span className="checkbox-custom"></span>
-              <span className="sensor-titulo">⚡ Sensor ACS712 (Corriente)</span>
+              <div className="sensor-titulo-info">
+                <span className="sensor-titulo">⚡ Sensor ACS712 (Corriente)</span>
+                <small>Monitorea el consumo energético en tiempo real</small>
+              </div>
             </label>
           </div>
           
@@ -509,34 +673,44 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
             <div className="sensor-config">
               <div className="config-row">
                 <div className="config-item">
-                  <label>Modelo</label>
+                  <label>Modelo Detectado</label>
                   <select
                     value={configuracionSensores.acs712.modelo}
-                    onChange={(e) => setConfiguracionSensores(prev => ({
-                      ...prev,
-                      acs712: { ...prev.acs712, modelo: e.target.value }
-                    }))}
+                    onChange={(e) => {
+                      const modelo = e.target.value;
+                      setConfiguracionSensores(prev => ({
+                        ...prev,
+                        acs712: { 
+                          ...prev.acs712, 
+                          modelo: modelo,
+                          is5A: modelo === '5A',
+                          maxAlert: modelo === '5A' ? 5.0 : (modelo === '20A' ? 20.0 : 30.0)
+                        }
+                      }));
+                    }}
                     className="select-config"
                   >
-                    <option value="5A">ACS712-5A</option>
-                    <option value="20A">ACS712-20A</option>
-                    <option value="30A">ACS712-30A</option>
+                    <option value="5A">ACS712-5A (hasta 5A)</option>
+                    <option value="20A">ACS712-20A (hasta 20A)</option>
+                    <option value="30A">ACS712-30A (hasta 30A)</option>
                   </select>
+                  <small>Modelo auto-detectado del sensor</small>
                 </div>
                 <div className="config-item">
                   <label>Alerta Máxima (A)</label>
                   <input
                     type="number"
-                    value={configuracionSensores.acs712.alertaMaxima}
+                    value={configuracionSensores.acs712.maxAlert}
                     onChange={(e) => setConfiguracionSensores(prev => ({
                       ...prev,
-                      acs712: { ...prev.acs712, alertaMaxima: parseFloat(e.target.value) }
+                      acs712: { ...prev.acs712, maxAlert: parseFloat(e.target.value) }
                     }))}
                     className="input-config"
-                    min="1"
-                    max="30"
+                    min="0.1"
+                    max={configuracionSensores.acs712.modelo === '5A' ? '5' : (configuracionSensores.acs712.modelo === '20A' ? '20' : '30')}
                     step="0.1"
                   />
+                  <small>Corriente máxima antes de alerta</small>
                 </div>
               </div>
             </div>
@@ -546,72 +720,339 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
     </div>
   );
 
-  // PASO 5: Confirmación
+  // PASO 4: Configuración de Automatización NUEVO
+  const renderPasoAutomatizacion = () => (
+    <div className="paso-contenido">
+      <div className="paso-header">
+        <h3>🤖 Configuración de Automatización Inteligente</h3>
+        <p>Configura los modos inteligentes y funciones de ahorro energético</p>
+      </div>
+
+      <div className="automatizacion-config">
+        {/* Modo de Operación */}
+        <div className="config-group">
+          <h4>⚡ Modo de Operación</h4>
+          <div className="modos-grid">
+            {[
+              { id: 1, name: 'Solo PIR', desc: 'Máximo ahorro - solo movimiento', saving: '85%', icon: '👁️' },
+              { id: 2, name: 'Solo LDR', desc: 'Ahorro medio - solo luz', saving: '60%', icon: '💡' },
+              { id: 3, name: 'Combinado', desc: 'LDR + PIR balanceado', saving: '70%', icon: '🔄' },
+              { id: 4, name: 'Inteligente', desc: 'IA adaptativa (recomendado)', saving: '75%', icon: '🧠' },
+              { id: 5, name: 'Manual', desc: 'Control manual completo', saving: '0%', icon: '🎛️' },
+              { id: 6, name: 'Horarios', desc: 'Basado en programación', saving: '65%', icon: '⏰' }
+            ].map(modo => (
+              <div
+                key={modo.id}
+                className={`modo-card ${configuracionAutomatizacion.operatingMode === modo.id ? 'selected' : ''}`}
+                onClick={() => setConfiguracionAutomatizacion(prev => ({
+                  ...prev,
+                  operatingMode: modo.id
+                }))}
+              >
+                <div className="modo-icon">{modo.icon}</div>
+                <div className="modo-info">
+                  <strong>{modo.name}</strong>
+                  <p>{modo.desc}</p>
+                  <span className="modo-saving">Ahorro: {modo.saving}</span>
+                </div>
+                {configuracionAutomatizacion.operatingMode === modo.id && (
+                  <div className="modo-selected">✅</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Configuraciones de Ahorro Energético */}
+        <div className="config-group">
+          <h4>🌱 Ahorro Energético</h4>
+          <div className="ahorro-config">
+            <label className="switch-label">
+              <input
+                type="checkbox"
+                checked={configuracionAutomatizacion.energySaving.enabled}
+                onChange={(e) => setConfiguracionAutomatizacion(prev => ({
+                  ...prev,
+                  energySaving: { ...prev.energySaving, enabled: e.target.checked }
+                }))}
+              />
+              <span className="switch-slider"></span>
+              <div className="switch-info">
+                <strong>Activar Ahorro Energético</strong>
+                <small>Optimizaciones automáticas para reducir consumo</small>
+              </div>
+            </label>
+
+            {configuracionAutomatizacion.energySaving.enabled && (
+              <div className="ahorro-options">
+                <label className="switch-label">
+                  <input
+                    type="checkbox"
+                    checked={configuracionAutomatizacion.energySaving.nightDimming}
+                    onChange={(e) => setConfiguracionAutomatizacion(prev => ({
+                      ...prev,
+                      energySaving: { ...prev.energySaving, nightDimming: e.target.checked }
+                    }))}
+                  />
+                  <span className="switch-slider"></span>
+                  <div className="switch-info">
+                    <strong>Atenuación Nocturna</strong>
+                    <small>Reduce intensidad automáticamente de 23:00 a 05:00</small>
+                  </div>
+                </label>
+
+                <label className="switch-label">
+                  <input
+                    type="checkbox"
+                    checked={configuracionAutomatizacion.energySaving.motionOnlyMode}
+                    onChange={(e) => setConfiguracionAutomatizacion(prev => ({
+                      ...prev,
+                      energySaving: { ...prev.energySaving, motionOnlyMode: e.target.checked }
+                    }))}
+                  />
+                  <span className="switch-slider"></span>
+                  <div className="switch-info">
+                    <strong>Modo Solo Movimiento</strong>
+                    <small>Solo enciende cuando detecta presencia (máximo ahorro)</small>
+                  </div>
+                </label>
+
+                {configuracionAutomatizacion.energySaving.nightDimming && (
+                  <div className="config-item">
+                    <label>Porcentaje de Atenuación Nocturna</label>
+                    <input
+                      type="range"
+                      min="20"
+                      max="80"
+                      value={configuracionAutomatizacion.energySaving.nightDimmingPercent}
+                      onChange={(e) => setConfiguracionAutomatizacion(prev => ({
+                        ...prev,
+                        energySaving: { ...prev.energySaving, nightDimmingPercent: parseInt(e.target.value) }
+                      }))}
+                      className="range-input"
+                    />
+                    <span className="range-value">{configuracionAutomatizacion.energySaving.nightDimmingPercent}%</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Configuraciones Inteligentes */}
+        <div className="config-group">
+          <h4>🧠 Funciones Inteligentes</h4>
+          <div className="inteligente-config">
+            <label className="switch-label">
+              <input
+                type="checkbox"
+                checked={configuracionAutomatizacion.adaptiveLearning}
+                onChange={(e) => setConfiguracionAutomatizacion(prev => ({
+                  ...prev,
+                  adaptiveLearning: e.target.checked
+                }))}
+              />
+              <span className="switch-slider"></span>
+              <div className="switch-info">
+                <strong>Aprendizaje Adaptativo</strong>
+                <small>El sistema aprende patrones de uso y optimiza automáticamente</small>
+              </div>
+            </label>
+
+            <label className="switch-label">
+              <input
+                type="checkbox"
+                checked={configuracionAutomatizacion.smartLDR.adaptiveThresholds}
+                onChange={(e) => setConfiguracionAutomatizacion(prev => ({
+                  ...prev,
+                  smartLDR: { ...prev.smartLDR, adaptiveThresholds: e.target.checked }
+                }))}
+              />
+              <span className="switch-slider"></span>
+              <div className="switch-info">
+                <strong>Umbrales LDR Adaptativos</strong>
+                <small>Ajusta automáticamente los umbrales de luz según condiciones</small>
+              </div>
+            </label>
+
+            <label className="switch-label">
+              <input
+                type="checkbox"
+                checked={configuracionAutomatizacion.smartPIR.extendedDetection}
+                onChange={(e) => setConfiguracionAutomatizacion(prev => ({
+                  ...prev,
+                  smartPIR: { ...prev.smartPIR, extendedDetection: e.target.checked }
+                }))}
+              />
+              <span className="switch-slider"></span>
+              <div className="switch-info">
+                <strong>Detección PIR Extendida</strong>
+                <small>Extiende tiempo de encendido si detecta actividad continua</small>
+              </div>
+            </label>
+
+            <label className="switch-label">
+              <input
+                type="checkbox"
+                checked={configuracionAutomatizacion.smartPIR.intensityBoost}
+                onChange={(e) => setConfiguracionAutomatizacion(prev => ({
+                  ...prev,
+                  smartPIR: { ...prev.smartPIR, intensityBoost: e.target.checked }
+                }))}
+              />
+              <span className="switch-slider"></span>
+              <div className="switch-info">
+                <strong>Boost de Intensidad PIR</strong>
+                <small>Aumenta intensidad al 100% cuando detecta movimiento</small>
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // PASO 5: Confirmación MEJORADO
   const renderPasoConfirmacion = () => (
     <div className="paso-contenido">
       <div className="paso-header">
         <h3>✅ Confirmar Configuración</h3>
-        <p>Revisa toda la configuración antes de guardar</p>
+        <p>Revisa toda la configuración antes de aplicarla al dispositivo</p>
       </div>
 
       <div className="confirmacion-resumen">
+        {/* Dispositivo */}
         <div className="resumen-seccion">
-          <h4>📱 Dispositivo</h4>
-          <div className="resumen-item">
-            <span className="resumen-label">Nombre:</span>
-            <span className="resumen-valor">{identificacion.nombre}</span>
-          </div>
-          <div className="resumen-item">
-            <span className="resumen-label">Ubicación:</span>
-            <span className="resumen-valor">{identificacion.ubicacion}</span>
-          </div>
-          <div className="resumen-item">
-            <span className="resumen-label">Zona:</span>
-            <span className="resumen-valor">{identificacion.zona || 'Sin asignar'}</span>
+          <h4>📱 Dispositivo Detectado</h4>
+          <div className="resumen-grid">
+            <div className="resumen-item">
+              <span className="resumen-label">ID del Dispositivo:</span>
+              <span className="resumen-valor">{datosDispositivo.deviceId}</span>
+            </div>
+            <div className="resumen-item">
+              <span className="resumen-label">IP:</span>
+              <span className="resumen-valor">{datosDispositivo.ip}:{datosDispositivo.puerto}</span>
+            </div>
+            <div className="resumen-item">
+              <span className="resumen-label">Firmware:</span>
+              <span className="resumen-valor">v{datosDispositivo.firmwareVersion}</span>
+            </div>
+            <div className="resumen-item">
+              <span className="resumen-label">Tipo:</span>
+              <span className="resumen-valor">{datosDispositivo.hardware}</span>
+            </div>
           </div>
         </div>
 
+        {/* Identificación */}
         <div className="resumen-seccion">
-          <h4>🌐 Red</h4>
-          <div className="resumen-item">
-            <span className="resumen-label">IP:</span>
-            <span className="resumen-valor">
-              {configuracionRed.ipNueva || datosDispositivo.ip}
-            </span>
-          </div>
-          <div className="resumen-item">
-            <span className="resumen-label">Puerto:</span>
-            <span className="resumen-valor">{configuracionRed.puerto}</span>
-          </div>
-          <div className="resumen-item">
-            <span className="resumen-label">Gateway:</span>
-            <span className="resumen-valor">{configuracionRed.gateway}</span>
+          <h4>🏷️ Identificación</h4>
+          <div className="resumen-grid">
+            <div className="resumen-item">
+              <span className="resumen-label">Nombre:</span>
+              <span className="resumen-valor">{identificacion.nombre}</span>
+            </div>
+            <div className="resumen-item">
+              <span className="resumen-label">Ubicación:</span>
+              <span className="resumen-valor">{identificacion.ubicacion}</span>
+            </div>
+            <div className="resumen-item">
+              <span className="resumen-label">Zona:</span>
+              <span className="resumen-valor">{identificacion.zona || 'Sin asignar'}</span>
+            </div>
+            {identificacion.coordenadas && (
+              <div className="resumen-item">
+                <span className="resumen-label">Coordenadas:</span>
+                <span className="resumen-valor">
+                  {identificacion.coordenadas.lat.toFixed(6)}, {identificacion.coordenadas.lng.toFixed(6)}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
+        {/* Sensores */}
         <div className="resumen-seccion">
-          <h4>🔬 Sensores</h4>
-          <div className="sensores-resumen">
-            <div className={`sensor-resumen-item ${configuracionSensores.ldr.habilitado ? 'habilitado' : 'deshabilitado'}`}>
-              <span className="sensor-icon">💡</span>
-              <span className="sensor-nombre">LDR</span>
-              <span className="sensor-estado">
+          <h4>🔬 Configuración de Sensores</h4>
+          <div className="sensores-resumen-grid">
+            <div className={`sensor-resumen-card ${configuracionSensores.ldr.habilitado ? 'habilitado' : 'deshabilitado'}`}>
+              <div className="sensor-resumen-header">
+                <span className="sensor-icon">💡</span>
+                <strong>LDR (Luminosidad)</strong>
+              </div>
+              <div className="sensor-resumen-estado">
                 {configuracionSensores.ldr.habilitado ? '✅ Habilitado' : '❌ Deshabilitado'}
-              </span>
+              </div>
+              {configuracionSensores.ldr.habilitado && (
+                <div className="sensor-resumen-config">
+                  <small>Día: {configuracionSensores.ldr.thresholdDaylight} lux</small>
+                  <small>Crepúsculo: {configuracionSensores.ldr.thresholdTwilight} lux</small>
+                  <small>Noche: {configuracionSensores.ldr.thresholdNight} lux</small>
+                </div>
+              )}
             </div>
-            <div className={`sensor-resumen-item ${configuracionSensores.pir.habilitado ? 'habilitado' : 'deshabilitado'}`}>
-              <span className="sensor-icon">👁️</span>
-              <span className="sensor-nombre">PIR</span>
-              <span className="sensor-estado">
+
+            <div className={`sensor-resumen-card ${configuracionSensores.pir.habilitado ? 'habilitado' : 'deshabilitado'}`}>
+              <div className="sensor-resumen-header">
+                <span className="sensor-icon">👁️</span>
+                <strong>PIR (Movimiento)</strong>
+              </div>
+              <div className="sensor-resumen-estado">
                 {configuracionSensores.pir.habilitado ? '✅ Habilitado' : '❌ Deshabilitado'}
+              </div>
+              {configuracionSensores.pir.habilitado && (
+                <div className="sensor-resumen-config">
+                  <small>Sensibilidad: {configuracionSensores.pir.sensitivity}</small>
+                  <small>Activación: {configuracionSensores.pir.activationTime}s</small>
+                  <small>Extendido: {configuracionSensores.pir.extendedTime}s</small>
+                </div>
+              )}
+            </div>
+
+            <div className={`sensor-resumen-card ${configuracionSensores.acs712.habilitado ? 'habilitado' : 'deshabilitado'}`}>
+              <div className="sensor-resumen-header">
+                <span className="sensor-icon">⚡</span>
+                <strong>ACS712 (Corriente)</strong>
+              </div>
+              <div className="sensor-resumen-estado">
+                {configuracionSensores.acs712.habilitado ? '✅ Habilitado' : '❌ Deshabilitado'}
+              </div>
+              {configuracionSensores.acs712.habilitado && (
+                <div className="sensor-resumen-config">
+                  <small>Modelo: ACS712-{configuracionSensores.acs712.modelo}</small>
+                  <small>Alerta: {configuracionSensores.acs712.maxAlert}A</small>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Automatización */}
+        <div className="resumen-seccion">
+          <h4>🤖 Automatización Inteligente</h4>
+          <div className="automatizacion-resumen">
+            <div className="resumen-item-destacado">
+              <span className="resumen-label">Modo de Operación:</span>
+              <span className="resumen-valor">
+                {['Apagado', 'Solo PIR', 'Solo LDR', 'Combinado', 'Inteligente', 'Manual', 'Horarios'][configuracionAutomatizacion.operatingMode]}
               </span>
             </div>
-            <div className={`sensor-resumen-item ${configuracionSensores.acs712.habilitado ? 'habilitado' : 'deshabilitado'}`}>
-              <span className="sensor-icon">⚡</span>
-              <span className="sensor-nombre">ACS712</span>
-              <span className="sensor-estado">
-                {configuracionSensores.acs712.habilitado ? '✅ Habilitado' : '❌ Deshabilitado'}
-              </span>
+            <div className="caracteristicas-habilitadas">
+              {configuracionAutomatizacion.energySaving.enabled && (
+                <span className="caracteristica-badge">🌱 Ahorro Energético</span>
+              )}
+              {configuracionAutomatizacion.energySaving.nightDimming && (
+                <span className="caracteristica-badge">🌙 Atenuación Nocturna</span>
+              )}
+              {configuracionAutomatizacion.adaptiveLearning && (
+                <span className="caracteristica-badge">🧠 Aprendizaje Adaptativo</span>
+              )}
+              {configuracionAutomatizacion.smartLDR.adaptiveThresholds && (
+                <span className="caracteristica-badge">💡 Umbrales Adaptativos</span>
+              )}
+              {configuracionAutomatizacion.smartPIR.extendedDetection && (
+                <span className="caracteristica-badge">👁️ Detección Extendida</span>
+              )}
             </div>
           </div>
         </div>
@@ -621,32 +1062,39 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
         <div className="advertencia-content">
           <span className="advertencia-icon">⚠️</span>
           <div>
-            <strong>Importante:</strong>
-            <p>Se enviará la configuración al dispositivo ESP32 y se guardará en Firebase. 
-               Si se configuró una nueva IP, el dispositivo se reiniciará automáticamente.</p>
+            <strong>Importante - Proceso de Configuración:</strong>
+            <ul>
+              <li>Se enviará toda la configuración al dispositivo ESP32</li>
+              <li>Los datos se guardarán automáticamente en Firebase</li>
+              <li>El dispositivo se reiniciará para aplicar cambios</li>
+              <li>El proceso puede tomar entre 30-60 segundos</li>
+            </ul>
           </div>
         </div>
       </div>
     </div>
   );
 
-  // Funciones del asistente
+  // Funciones del asistente MEJORADAS
 
   const iniciarDeteccionAutomatica = async () => {
     setCargando(true);
     setError('');
+    setProgresoDeteccion(0);
     
     try {
-      const dispositivos = await detectESP32InRange(
+      console.log('🔍 Iniciando detección automática optimizada...');
+      
+      const dispositivos = await detectESP32InRangeCORS(
         deteccion.rangoIP.base,
         deteccion.rangoIP.inicio,
         deteccion.rangoIP.fin,
         {
           onProgress: (info) => {
-            console.log(`Progreso: ${info.percentage}%`);
+            console.log(`Progreso: ${info.percentage}% - Probando ${info.ip}`);
           },
           onDeviceFound: (dispositivo) => {
-            console.log('Dispositivo encontrado:', dispositivo.ip);
+            console.log('✅ Dispositivo encontrado:', dispositivo.ip, 'Firmware:', dispositivo.data?.firmwareVersion);
           }
         }
       );
@@ -656,13 +1104,21 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
           ...prev,
           dispositivosEncontrados: dispositivos.devicesFound
         }));
+        console.log(`🎉 Escaneo completado: ${dispositivos.foundCount} dispositivos encontrados`);
+        
+        // Auto-seleccionar si solo hay uno
+        if (dispositivos.devicesFound.length === 1) {
+          seleccionarDispositivo(dispositivos.devicesFound[0]);
+        }
       } else {
-        setError('No se encontraron dispositivos ESP32 en el rango especificado');
+        setError('No se encontraron dispositivos ESP32 en el rango especificado. Verifica que el dispositivo esté encendido y conectado a la red.');
       }
     } catch (error) {
+      console.error('❌ Error durante la detección:', error);
       setError(`Error durante la detección: ${error.message}`);
     } finally {
       setCargando(false);
+      setProgresoDeteccion(0);
     }
   };
 
@@ -671,14 +1127,18 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
     setError('');
     
     try {
-      const resultado = await testESP32Connection(deteccion.ipManual, 80, 5000);
+      console.log(`🎯 Probando IP manual: ${deteccion.ipManual}`);
+      
+      const resultado = await testESP32ConnectionCORS(deteccion.ipManual, 80, 8000);
       
       if (resultado.success) {
         const dispositivo = {
           ip: deteccion.ipManual,
           puerto: 80,
           data: resultado.data,
-          responseTime: resultado.responseTime
+          responseTime: resultado.responseTime,
+          isAdvancedFirmware: resultado.isAdvancedFirmware,
+          deviceType: resultado.deviceType
         };
         
         setDeteccion(prev => ({
@@ -687,10 +1147,12 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
         }));
         
         seleccionarDispositivo(dispositivo);
+        console.log('✅ Conexión manual exitosa');
       } else {
         setError(`No se pudo conectar con ${deteccion.ipManual}: ${resultado.error}`);
       }
     } catch (error) {
+      console.error('❌ Error probando IP manual:', error);
       setError(`Error probando IP: ${error.message}`);
     } finally {
       setCargando(false);
@@ -698,31 +1160,56 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
   };
 
   const seleccionarDispositivo = (dispositivo) => {
+    console.log('📱 Seleccionando dispositivo:', dispositivo.ip);
+    
     setDeteccion(prev => ({
       ...prev,
       dispositivoSeleccionado: dispositivo
     }));
     
+    // Extraer información más completa del dispositivo
+    const deviceData = dispositivo.data || {};
+    
     setDatosDispositivo({
       ip: dispositivo.ip,
       puerto: dispositivo.puerto,
-      deviceId: dispositivo.data?.deviceId || `ESP32_${dispositivo.ip.replace(/\./g, '_')}`,
-      firmwareVersion: dispositivo.data?.firmwareVersion || '1.0.0',
-      hardware: dispositivo.data?.hardware || 'ESP32-WROOM-32',
-      sensores: dispositivo.data?.sensors || {}
+      deviceId: deviceData.deviceId || `LUM_${dispositivo.ip.replace(/\./g, '')}`,
+      firmwareVersion: deviceData.firmwareVersion || '1.0.0',
+      hardware: deviceData.hardware?.model || 'ESP32-WROOM-32',
+      sensores: {
+        ldr: deviceData.capabilities?.ldr ? { model: 'Fotoresistor-5k', autoDetected: true } : null,
+        pir: deviceData.capabilities?.pir ? { model: 'HC-SR501', autoDetected: true } : null,
+        acs712: deviceData.capabilities?.acs712 ? { model: 'ACS712-20A', autoDetected: true } : null
+      },
+      isAdvancedFirmware: dispositivo.isAdvancedFirmware,
+      configured: deviceData.configured || false
     });
 
-    // Auto-rellenar algunos campos
+    // Auto-rellenar campos de identificación
     setIdentificacion(prev => ({
       ...prev,
-      nombre: dispositivo.data?.deviceName || `Poste ${dispositivo.ip.split('.').pop()}`
+      nombre: deviceData.deviceName || `Poste Villa Adela ${dispositivo.ip.split('.').pop()}`,
+      zona: deviceData.zona || ''
     }));
 
-    setConfiguracionRed(prev => ({
-      ...prev,
-      ipNueva: '', // Mantener IP actual por defecto
-      puerto: dispositivo.puerto
-    }));
+    // Configurar sensores basado en capacidades detectadas
+    if (deviceData.capabilities) {
+      setConfiguracionSensores(prev => ({
+        ...prev,
+        ldr: {
+          ...prev.ldr,
+          habilitado: !!deviceData.capabilities.ldr
+        },
+        pir: {
+          ...prev.pir,
+          habilitado: !!deviceData.capabilities.pir
+        },
+        acs712: {
+          ...prev.acs712,
+          habilitado: !!deviceData.capabilities.acs712
+        }
+      }));
+    }
   };
 
   const avanzarPaso = () => {
@@ -755,48 +1242,117 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
     setError('');
 
     try {
-      // Crear perfil del dispositivo
-      const perfilDispositivo = createDeviceProfile(datosDispositivo);
+      console.log('💾 Iniciando proceso de configuración final optimizado...');
       
-      // Generar ID único
-      const deviceId = `POSTE_${Date.now()}`;
+      // Generar ID único más descriptivo
+      const timestamp = Date.now();
+      const deviceSuffix = datosDispositivo.deviceId.slice(-4);
+      const deviceId = `POSTE_${deviceSuffix}_${timestamp}`;
       
-      // Preparar datos completos
+      // Preparar configuración completa para el ESP32
+      const configESP32 = {
+        deviceName: identificacion.nombre,
+        zona: identificacion.zona,
+        ubicacion: identificacion.ubicacion,
+        coordenadas: identificacion.coordenadas,
+        markConfigured: true,
+        sensores: {
+          ldr: configuracionSensores.ldr,
+          pir: configuracionSensores.pir,
+          acs712: configuracionSensores.acs712
+        },
+        automation: configuracionAutomatizacion
+      };
+
+      // Enviar configuración al ESP32 primero
+      console.log('📡 Enviando configuración al ESP32...');
+      const httpManager = new HttpManager(datosDispositivo.ip, datosDispositivo.puerto);
+      
+      // Configurar dispositivo
+      const configResponse = await fetch(`http://${datosDispositivo.ip}:${datosDispositivo.puerto}/api/configure`, {
+        method: 'POST',
+        mode: 'cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(configESP32)
+      });
+
+      if (!configResponse.ok) {
+        throw new Error(`Error configurando ESP32: HTTP ${configResponse.status}`);
+      }
+
+      const configResult = await configResponse.json();
+      console.log('✅ ESP32 configurado:', configResult);
+
+      // Configurar sensores si es firmware avanzado
+      if (datosDispositivo.isAdvancedFirmware) {
+        console.log('🔬 Configurando sensores avanzados...');
+        const sensorsResponse = await fetch(`http://${datosDispositivo.ip}:${datosDispositivo.puerto}/api/sensors/config`, {
+          method: 'POST',
+          mode: 'cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(configuracionSensores)
+        });
+
+        if (sensorsResponse.ok) {
+          console.log('✅ Sensores configurados');
+        }
+
+        // Configurar automatización
+        console.log('🤖 Configurando automatización...');
+        const autoResponse = await fetch(`http://${datosDispositivo.ip}:${datosDispositivo.puerto}/api/automation`, {
+          method: 'POST',
+          mode: 'cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(configuracionAutomatizacion)
+        });
+
+        if (autoResponse.ok) {
+          console.log('✅ Automatización configurada');
+        }
+      }
+
+      // Preparar datos completos para Firebase
       const dispositivoCompleto = {
-        ...perfilDispositivo,
         id: deviceId,
+        deviceId: datosDispositivo.deviceId,
         nombre: identificacion.nombre,
         ubicacion: identificacion.ubicacion,
         zona: identificacion.zona,
         descripcion: identificacion.descripcion,
+        coordenadas: identificacion.coordenadas,
         red: {
-          ip: configuracionRed.ipNueva || datosDispositivo.ip,
-          puerto: configuracionRed.puerto,
-          gateway: configuracionRed.gateway,
-          subnet: configuracionRed.subnet,
-          dns: configuracionRed.dns,
+          ip: datosDispositivo.ip,
+          puerto: datosDispositivo.puerto,
           protocolo: 'HTTP/1.1'
         },
-        configuracion: {
+        hardware: {
+          tipo: datosDispositivo.hardware,
+          firmware: datosDispositivo.firmwareVersion,
+          isAdvanced: datosDispositivo.isAdvancedFirmware
+        },
+        sensores: {
           ldr: configuracionSensores.ldr,
           pir: configuracionSensores.pir,
           acs712: configuracionSensores.acs712
-        }
+        },
+        automatizacion: configuracionAutomatizacion,
+        estado: {
+          online: true,
+          configurado: true,
+          ultimaConexion: new Date().toISOString()
+        },
+        fechaCreacion: new Date().toISOString(),
+        fechaActualizacion: new Date().toISOString()
       };
 
-      // Crear en Firebase
+      // Guardar en Firebase
+      console.log('🔥 Guardando en Firebase...');
       await firebaseService.createInitialPoste(deviceId);
-      
-      // Actualizar con configuración completa
       await firebaseService.updateDoc(`postes/${deviceId}`, dispositivoCompleto);
 
-      // Si hay cambio de IP, enviarlo al ESP32
-      if (configuracionRed.ipNueva && configuracionRed.ipNueva !== datosDispositivo.ip) {
-        const httpManager = new HttpManager(datosDispositivo.ip, datosDispositivo.puerto);
-        await httpManager.changeIPOnDevice(configuracionRed.ipNueva);
-      }
+      console.log('✅ Configuración completada exitosamente');
 
-      // Completar
+      // Completar proceso
       if (onCompletar) {
         onCompletar(dispositivoCompleto);
       }
@@ -806,6 +1362,7 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
       }
 
     } catch (error) {
+      console.error('❌ Error guardando configuración:', error);
       setError(`Error guardando configuración: ${error.message}`);
     } finally {
       setCargando(false);
@@ -816,7 +1373,7 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
     <div className="asistente-overlay">
       <div className="asistente-modal">
         <div className="asistente-header">
-          <h2>🧙‍♂️ Asistente de Configuración</h2>
+          <h2>🧙‍♂️ Asistente de Configuración Inteligente v4.0</h2>
           <button className="btn-cerrar" onClick={onCerrar}>✕</button>
         </div>
 
@@ -848,8 +1405,8 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
         <div className="asistente-contenido">
           {pasoActual === 1 && renderPasoDeteccion()}
           {pasoActual === 2 && renderPasoIdentificacion()}
-          {pasoActual === 3 && renderPasoRed()}
-          {pasoActual === 4 && renderPasoSensores()}
+          {pasoActual === 3 && renderPasoSensores()}
+          {pasoActual === 4 && renderPasoAutomatizacion()}
           {pasoActual === 5 && renderPasoConfirmacion()}
         </div>
 
@@ -865,6 +1422,9 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
 
           <div className="navegacion-info">
             Paso {pasoActual} de {pasos.length}
+            {datosDispositivo.isAdvancedFirmware && (
+              <span className="firmware-badge">⚡ Firmware v4.0</span>
+            )}
           </div>
 
           {pasoActual < pasos.length ? (
@@ -881,7 +1441,7 @@ const AsistenteConfiguracion = ({ onCerrar, onCompletar }) => {
               onClick={completarConfiguracion}
               disabled={cargando}
             >
-              {cargando ? '💾 Guardando...' : '✅ Finalizar'}
+              {cargando ? '💾 Configurando...' : '✅ Aplicar Configuración'}
             </button>
           )}
         </div>

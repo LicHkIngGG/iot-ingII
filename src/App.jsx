@@ -8,9 +8,9 @@ import { db } from './utils/firebase';
 import RegLogin from './views/vlogin/reg-login';
 
 // Componentes del sistema
-import Dashboard from './components/monitoreos/Dashboard.jsx'
+import MonitoreoControl from './components/monitoreos/MonitoreoControl.jsx';
 import GestionUnidades from './components/GestionUnidades/GestionUnidades.jsx'
-import MapeoDispositivos from './components/MapeoDispositivos/MapeoDispositivos.jsx'
+import MapaVisualizacion from './components/MapeoDispositivos/MapaVisualizacion.jsx'
 import GestionUsuarios from './components/gestion-usuarios/gestion-usuarios.jsx';
 import Reportes from './components/reportes/reportes.jsx';
 import PerfilUsuario from './components/miPerfil/PerfilUsuario.jsx';
@@ -272,7 +272,7 @@ function App() {
           path="/monitoreo" 
           element={
             <ProtectedRoute path="/monitoreo">
-              <Dashboard userRole={userRole} />
+              <MonitoreoControl userRole={userRole} />
             </ProtectedRoute>
           } 
         />
@@ -290,7 +290,7 @@ function App() {
           path="/mapeo-dispositivos" 
           element={
             <ProtectedRoute path="/mapeo-dispositivos">
-              <MapeoDispositivos userRole={userRole} />
+              <MapaVisualizacion userRole={userRole} />
             </ProtectedRoute>
           } 
         />

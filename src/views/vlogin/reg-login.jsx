@@ -184,7 +184,7 @@ return (
         alt="Logo Villa Adela" 
         className="login-image" 
       />
-      <h2>Sistema de Alumbrado Público</h2>
+      <h2>SMART LIGHT</h2>
 
       <form onSubmit={handleIngresarClick}>
         <input

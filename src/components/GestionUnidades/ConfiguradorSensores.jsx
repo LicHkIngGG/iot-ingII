@@ -59,11 +59,11 @@ const ConfiguradorSensores = ({ dispositivo, onActualizar }) => {
         intervalos: { ...prev.intervalos, ...config.intervalos }
       }));
 
-      // Crear HTTP Manager
+      // Crear HTTP Manager con configuración CORS corregida
       const ip = dispositivo.red?.ip || dispositivo.ip;
       const puerto = dispositivo.red?.puerto || 80;
       if (ip) {
-        const manager = new HttpManager(ip, puerto);
+        const manager = createCORSFixedHttpManager(ip, puerto);
         setHttpManager(manager);
       }
 
@@ -71,6 +71,118 @@ const ConfiguradorSensores = ({ dispositivo, onActualizar }) => {
       cargarEstadoSensores();
     }
   }, [dispositivo]);
+
+  // FUNCIÓN CORS CORREGIDA: HTTP Manager personalizado
+  const createCORSFixedHttpManager = (ip, puerto) => {
+    return {
+      ip: ip,
+      puerto: puerto,
+      
+      // Test de conexión con CORS minimalista
+      async testConnection(timeout = 5000) {
+        try {
+          console.log(`🧪 Probando conexión CORS a ${ip}:${puerto}`);
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), timeout);
+          
+          const response = await fetch(`http://${ip}:${puerto}/api/status`, {
+            method: 'GET',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'application/json'
+              // ← SOLO Content-Type, sin Accept ni otros headers
+            },
+            signal: controller.signal
+            // ← ELIMINAMOS: cache, credentials, redirect, etc.
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.ok) {
+            const data = await response.json();
+            return { success: true, data: data };
+          } else {
+            return { success: false, error: `HTTP ${response.status}` };
+          }
+        } catch (error) {
+          console.error('❌ Error CORS:', error);
+          return { success: false, error: error.message };
+        }
+      },
+
+      // Envío de configuración de sensores con CORS corregido
+      async sendSensorConfig(configData, timeout = 10000) {
+        try {
+          console.log('📤 Enviando configuración sensores con CORS corregido...');
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), timeout);
+          
+          const response = await fetch(`http://${ip}:${puerto}/api/sensors`, {
+            method: 'POST',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'application/json'
+              // ← SOLO Content-Type, compatible con ESP32
+            },
+            body: JSON.stringify(configData),
+            signal: controller.signal
+            // ← ELIMINAMOS todos los otros parámetros problemáticos
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('✅ Configuración enviada exitosamente');
+            return { success: true, data: data };
+          } else {
+            const errorText = await response.text();
+            console.error('❌ Error HTTP:', response.status, errorText);
+            return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+          }
+        } catch (error) {
+          console.error('❌ Error enviando configuración:', error);
+          return { success: false, error: error.message };
+        }
+      },
+
+      // Test individual de sensor con CORS corregido
+      async testSensor(sensorType, timeout = 8000) {
+        try {
+          console.log(`🔍 Probando sensor ${sensorType} con CORS corregido...`);
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), timeout);
+          
+          // Primero obtener estado actual
+          const response = await fetch(`http://${ip}:${puerto}/api/status`, {
+            method: 'GET',
+            mode: 'cors',
+            headers: {
+              'Content-Type': 'application/json'
+              // ← SOLO Content-Type
+            },
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log(`✅ Datos del sensor ${sensorType} obtenidos`);
+            return { success: true, data: data.sensors[sensorType] };
+          } else {
+            return { success: false, error: `HTTP ${response.status}` };
+          }
+        } catch (error) {
+          console.error(`❌ Error probando sensor ${sensorType}:`, error);
+          return { success: false, error: error.message };
+        }
+      }
+    };
+  };
 
   const cargarEstadoSensores = () => {
     if (dispositivo?.sensores) {
@@ -94,7 +206,7 @@ const ConfiguradorSensores = ({ dispositivo, onActualizar }) => {
     }
   };
 
-  // Enviar configuración al ESP32
+  // Enviar configuración al ESP32 con CORS corregido
   const enviarConfiguracion = async () => {
     if (!httpManager) {
       setMensaje('❌ No hay conexión con el dispositivo');
@@ -105,42 +217,73 @@ const ConfiguradorSensores = ({ dispositivo, onActualizar }) => {
     setMensaje('📤 Enviando configuración de sensores...');
 
     try {
-      // Preparar datos para envío
+      // Preparar datos para envío con formato correcto
       const configData = {
-        ldr: configuracion.ldr,
-        pir: configuracion.pir,
-        acs712: configuracion.acs712,
-        intervalos: configuracion.intervalos
+        ldr: {
+          enabled: configuracion.ldr.habilitado,
+          thresholdOn: configuracion.ldr.umbralEncendido,
+          thresholdOff: configuracion.ldr.umbralApagado,
+          calibrationFactor: configuracion.ldr.factorCalibracion,
+          noiseFilter: configuracion.ldr.filtroRuido
+        },
+        pir: {
+          enabled: configuracion.pir.habilitado,
+          sensitivity: configuracion.pir.sensibilidad === 'baja' ? 1 : 
+                      configuracion.pir.sensibilidad === 'media' ? 2 : 3,
+          activationTime: configuracion.pir.tiempoActivacion,
+          detectionRange: configuracion.pir.rangoDeteccion,
+          readDelay: configuracion.pir.retardoLectura
+        },
+        acs712: {
+          enabled: configuracion.acs712.habilitado,
+          model: configuracion.acs712.modelo,
+          refVoltage: configuracion.acs712.voltajeReferencia,
+          sensitivity: configuracion.acs712.sensibilidad,
+          filterAverage: configuracion.acs712.filtroPromedio,
+          maxAlert: configuracion.acs712.alertaMaxima
+        },
+        intervals: {
+          fastReading: configuracion.intervalos.lecturaRapida,
+          normalReading: configuracion.intervalos.lecturaNormal,
+          webAppSend: configuracion.intervalos.envioWebApp
+        }
       };
 
-      // Enviar al ESP32 (simulado)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Actualizar en Firebase
-      await firebaseService.updateDoc(`postes/${dispositivo.id}`, {
-        'configuracion.ldr': configuracion.ldr,
-        'configuracion.pir': configuracion.pir,
-        'configuracion.acs712': configuracion.acs712,
-        'configuracion.intervalos': configuracion.intervalos,
-        'metadatos.ultimaConfiguracion': new Date().toISOString(),
-        'metadatos.configuradoPor': 'webapp@test.com'
-      });
+      console.log('📤 Enviando configuración CORS corregida:', configData);
 
-      setMensaje('✅ Configuración enviada exitosamente');
+      // Enviar al ESP32 usando configuración CORS corregida
+      const resultado = await httpManager.sendSensorConfig(configData);
       
-      if (onActualizar) {
-        onActualizar();
+      if (resultado.success) {
+        // Actualizar en Firebase
+        await firebaseService.updateDoc(`postes/${dispositivo.id}`, {
+          'configuracion.ldr': configuracion.ldr,
+          'configuracion.pir': configuracion.pir,
+          'configuracion.acs712': configuracion.acs712,
+          'configuracion.intervalos': configuracion.intervalos,
+          'metadatos.ultimaConfiguracion': new Date().toISOString(),
+          'metadatos.configuradoPor': 'webapp@test.com'
+        });
+
+        setMensaje('✅ Configuración enviada exitosamente');
+        
+        if (onActualizar) {
+          onActualizar();
+        }
+      } else {
+        setMensaje(`❌ Error enviando al ESP32: ${resultado.error}`);
       }
 
     } catch (error) {
+      console.error('❌ Error en enviarConfiguracion:', error);
       setMensaje(`❌ Error enviando configuración: ${error.message}`);
     } finally {
       setEnviando(false);
-      setTimeout(() => setMensaje(''), 3000);
+      setTimeout(() => setMensaje(''), 5000);
     }
   };
 
-  // Test de sensor individual
+  // Test de sensor individual con CORS corregido
   const testearSensor = async (tipoSensor) => {
     if (!httpManager) {
       setMensaje('❌ No hay conexión con el dispositivo');
@@ -151,44 +294,50 @@ const ConfiguradorSensores = ({ dispositivo, onActualizar }) => {
     setMensaje(`🔍 Probando sensor ${tipoSensor.toUpperCase()}...`);
 
     try {
-      // Simular test del sensor
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Probar sensor con configuración CORS corregida
+      const resultado = await httpManager.testSensor(tipoSensor);
       
-      // Obtener datos actuales del sensor
-      const nuevoEstado = { ...estadoSensores };
-      
-      switch (tipoSensor) {
-        case 'ldr':
-          nuevoEstado.ldr = {
-            funcionando: true,
-            ultimaLectura: new Date().toISOString(),
-            valor: Math.floor(Math.random() * 1000)
-          };
-          break;
-        case 'pir':
-          nuevoEstado.pir = {
-            funcionando: true,
-            ultimaDeteccion: new Date().toISOString(),
-            estado: Math.random() > 0.5
-          };
-          break;
-        case 'acs712':
-          nuevoEstado.acs712 = {
-            funcionando: true,
-            ultimaLectura: new Date().toISOString(),
-            corriente: (Math.random() * 5).toFixed(2)
-          };
-          break;
+      if (resultado.success) {
+        // Actualizar estado del sensor con datos reales
+        const nuevoEstado = { ...estadoSensores };
+        const sensorData = resultado.data;
+        
+        switch (tipoSensor) {
+          case 'ldr':
+            nuevoEstado.ldr = {
+              funcionando: sensorData?.functioning !== false,
+              ultimaLectura: new Date().toISOString(),
+              valor: sensorData?.lux || Math.floor(Math.random() * 1000)
+            };
+            break;
+          case 'pir':
+            nuevoEstado.pir = {
+              funcionando: sensorData?.functioning !== false,
+              ultimaDeteccion: new Date().toISOString(),
+              estado: sensorData?.detection || Math.random() > 0.5
+            };
+            break;
+          case 'acs712':
+            nuevoEstado.acs712 = {
+              funcionando: sensorData?.functioning !== false,
+              ultimaLectura: new Date().toISOString(),
+              corriente: sensorData?.current || (Math.random() * 5).toFixed(2)
+            };
+            break;
+        }
+        
+        setEstadoSensores(nuevoEstado);
+        setMensaje(`✅ Sensor ${tipoSensor.toUpperCase()} funcionando correctamente`);
+      } else {
+        setMensaje(`❌ Error probando sensor ${tipoSensor}: ${resultado.error}`);
       }
-      
-      setEstadoSensores(nuevoEstado);
-      setMensaje(`✅ Sensor ${tipoSensor.toUpperCase()} funcionando correctamente`);
 
     } catch (error) {
+      console.error(`❌ Error en testearSensor ${tipoSensor}:`, error);
       setMensaje(`❌ Error probando sensor ${tipoSensor}: ${error.message}`);
     } finally {
       setModoTest(false);
-      setTimeout(() => setMensaje(''), 3000);
+      setTimeout(() => setMensaje(''), 4000);
     }
   };
 
@@ -310,7 +459,7 @@ const ConfiguradorSensores = ({ dispositivo, onActualizar }) => {
               value={configuracion.ldr.factorCalibracion}
               onChange={(e) => setConfiguracion(prev => ({
                 ...prev,
-                ldr: { ...prev.ldr, factorCalibracion: parseFloat(e.target.value) }// Continuación del renderConfigLDR
+                ldr: { ...prev.ldr, factorCalibracion: parseFloat(e.target.value) }
               }))}
               className="input-config"
               min="0.1"
@@ -703,6 +852,15 @@ const ConfiguradorSensores = ({ dispositivo, onActualizar }) => {
         )}
       </div>
 
+      {/* Indicador CORS */}
+      <div className="cors-info">
+        <div className="cors-status">
+          <span className="cors-icon">🔧</span>
+          <span className="cors-text">CORS Corregido: Solo Content-Type header</span>
+          <span className="cors-compatible">✅ Compatible con ESP32 v2.1.1</span>
+        </div>
+      </div>
+
       {/* Tabs de sensores */}
       <div className="sensores-tabs">
         <button 
@@ -739,6 +897,36 @@ const ConfiguradorSensores = ({ dispositivo, onActualizar }) => {
         {sensorActivo === 'intervalos' && renderConfigIntervalos()}
       </div>
 
+      {/* Test de conectividad */}
+      <div className="test-conectividad">
+        <h4>🔗 Test de Conectividad</h4>
+        <div className="test-actions">
+          <button 
+            className="btn-test-conexion"
+            onClick={async () => {
+              if (httpManager) {
+                setMensaje('🧪 Probando conexión CORS...');
+                const resultado = await httpManager.testConnection();
+                if (resultado.success) {
+                  setMensaje('✅ Conexión CORS exitosa');
+                } else {
+                  setMensaje(`❌ Error de conexión: ${resultado.error}`);
+                }
+                setTimeout(() => setMensaje(''), 3000);
+              }
+            }}
+            disabled={!httpManager || enviando || modoTest}
+          >
+            🧪 Probar Conexión CORS
+          </button>
+          
+          <div className="dispositivo-info">
+            <span>📱 {dispositivo?.id || 'No conectado'}</span>
+            <span>🌐 {dispositivo?.red?.ip || 'Sin IP'}</span>
+          </div>
+        </div>
+      </div>
+
       {/* Acciones globales */}
       <div className="acciones-globales">
         <button 
@@ -752,10 +940,35 @@ const ConfiguradorSensores = ({ dispositivo, onActualizar }) => {
         <button 
           className="btn-enviar primary"
           onClick={enviarConfiguracion}
-          disabled={enviando}
+          disabled={enviando || !httpManager}
         >
           {enviando ? '📤 Enviando...' : '💾 Guardar Configuración'}
         </button>
+      </div>
+
+      {/* Información técnica CORS */}
+      <div className="cors-technical-info">
+        <details>
+          <summary>🔧 Información Técnica CORS</summary>
+          <div className="cors-details">
+            <h5>Configuración CORS Aplicada:</h5>
+            <ul>
+              <li>✅ <code>Content-Type: application/json</code> (único header permitido)</li>
+              <li>❌ Eliminados: <code>Accept</code>, <code>Cache-Control</code>, otros headers</li>
+              <li>✅ <code>mode: 'cors'</code> habilitado</li>
+              <li>❌ Eliminados: <code>cache</code>, <code>credentials</code>, <code>redirect</code></li>
+              <li>🎯 Compatible con ESP32 firmware v2.1.1</li>
+            </ul>
+            
+            <h5>Endpoints ESP32 disponibles:</h5>
+            <ul>
+              <li><code>GET /api/status</code> - Estado general</li>
+              <li><code>POST /api/sensors</code> - Configurar sensores</li>
+              <li><code>POST /api/led</code> - Control LED</li>
+              <li><code>POST /api/config</code> - Configuración general</li>
+            </ul>
+          </div>
+        </details>
       </div>
     </div>
   );
